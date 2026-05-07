@@ -62,7 +62,7 @@ export default function Home() {
 
           <Reveal delay={240}>
             <p
-              className="mt-7 max-w-xl text-white/75"
+              className="mt-7 max-w-xl text-white/85"
               style={{
                 fontSize: "clamp(17px, 1.6vw, 21px)",
                 lineHeight: 1.45,
