@@ -49,7 +49,7 @@ export default function ThemeToggle() {
       onClick={toggle}
       aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
       title={isDark ? "Switch to light mode" : "Switch to dark mode"}
-      className="rounded-full border border-[var(--border)] p-2 text-[var(--foreground)]/80 hover:text-[var(--gold)] hover:border-[var(--gold)] transition-colors"
+      className="rounded-full border border-[var(--hairline-strong)] p-2 text-[var(--foreground)]/80 hover:text-[var(--ink)] hover:border-[var(--ink-muted-32)] transition-colors"
     >
       {isDark ? (
         // Sun icon (click to go light)

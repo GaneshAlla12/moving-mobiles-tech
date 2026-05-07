@@ -5,7 +5,7 @@ import Logo from "./Logo";
 export default function Footer() {
   const a = business.contact.address;
   return (
-    <footer className="mt-24 bg-[var(--canvas-parchment)] text-[var(--ink-muted-80)]">
+    <footer className="mt-24 bg-[var(--canvas-sunken)] text-[var(--ink-muted-80)]">
       <div className="mx-auto max-w-6xl px-4 sm:px-6 py-16">
         <div className="grid gap-10 md:grid-cols-4 text-[13px] leading-[1.6]">
           <div className="col-span-2 md:col-span-1">

@@ -1,8 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { business } from "@/lib/business";
 import ThemeToggle from "./ThemeToggle";
 import CartButton from "./cart/CartButton";
@@ -26,11 +25,18 @@ const STAFF_NAV_EXTRA = [
 ];
 
 export default function Header({ isStaff = false }: Props) {
-  const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
 
   const navLinks = isStaff ? [...PUBLIC_NAV, ...STAFF_NAV_EXTRA] : PUBLIC_NAV;
+
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 8);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
 
   const onSignOut = async () => {
     if (signingOut) return;
@@ -38,69 +44,86 @@ export default function Header({ isStaff = false }: Props) {
     try {
       await fetch("/api/staff/logout", { method: "POST" });
     } catch {}
-    // Full reload so the server-rendered Header re-evaluates the cookie.
     window.location.href = "/";
   };
 
   return (
     <>
-      <header className="sticky top-0 z-40 border-b border-[var(--hairline)] bg-[var(--header-bg)]">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 sm:px-6">
-          <Link href="/" className="flex items-center gap-2.5">
-            <Logo size={40} />
+      <header
+        className="sticky top-0 z-40 transition-all"
+        style={{
+          backgroundColor: scrolled
+            ? "var(--glass-bg-strong)"
+            : "var(--glass-bg)",
+          backdropFilter: "saturate(180%) blur(20px)",
+          WebkitBackdropFilter: "saturate(180%) blur(20px)",
+          borderBottom: scrolled
+            ? "1px solid var(--hairline)"
+            : "1px solid transparent",
+          transitionDuration: "var(--dur-3)",
+          transitionTimingFunction: "var(--ease-out-expo)",
+        }}
+      >
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-5 sm:px-8 py-3">
+          <Link href="/" className="flex items-center gap-2.5 group">
+            <Logo size={36} />
             <div className="hidden sm:block leading-tight">
-              <div className="text-[15px] font-semibold tracking-tight">
+              <div className="text-[14px] font-semibold tracking-[-0.01em]">
                 {business.name}
               </div>
-              <div className="text-[10px] uppercase tracking-[0.18em] text-[var(--muted)]">
+              <div className="text-[10px] uppercase tracking-[0.18em] text-[var(--ink-muted-60)]">
                 {business.tagline}
               </div>
             </div>
           </Link>
 
-          <nav className="hidden md:flex items-center gap-8">
-            {navLinks.map((l) => (
-              <Link
-                key={l.href}
-                href={l.href}
-                className={`text-[13px] hover:text-[var(--primary)] transition-colors ${
-                  l.href.startsWith("/repair-cost") ||
-                  l.href.startsWith("/staff/")
-                    ? "text-[var(--primary)] font-medium"
-                    : "text-[var(--foreground)]/85"
-                }`}
-              >
-                {l.label}
-                {(l.href.startsWith("/repair-cost") ||
-                  l.href.startsWith("/staff/")) && (
-                  <span className="ml-1 inline-flex items-center rounded-full bg-[var(--primary-soft)] px-1.5 py-0.5 text-[9px] font-semibold tracking-wider uppercase text-[var(--primary)]">
-                    Staff
-                  </span>
-                )}
-              </Link>
-            ))}
+          <nav className="hidden md:flex items-center gap-7">
+            {navLinks.map((l) => {
+              const isStaffLink =
+                l.href.startsWith("/repair-cost") || l.href.startsWith("/staff/");
+              return (
+                <Link
+                  key={l.href}
+                  href={l.href}
+                  className={`text-[13px] font-medium transition-colors hover:text-[var(--ink)] ${
+                    isStaffLink
+                      ? "text-[var(--ink)] flex items-center gap-1.5"
+                      : "text-[var(--ink-muted-60)]"
+                  }`}
+                >
+                  {l.label}
+                  {isStaffLink && (
+                    <span
+                      className="inline-block w-1.5 h-1.5 rounded-full"
+                      style={{ background: "var(--primary)" }}
+                      aria-label="staff route"
+                    />
+                  )}
+                </Link>
+              );
+            })}
           </nav>
 
           <div className="flex items-center gap-2">
             <a
               href={`tel:${business.contact.phone}`}
-              className="hidden sm:inline-flex text-[13px] text-[var(--foreground)]/85 hover:text-[var(--primary)] px-2"
+              className="hidden lg:inline-flex text-[13px] text-[var(--ink-muted-60)] hover:text-[var(--ink)] transition-colors px-2 tabular-nums"
               aria-label={`Call ${business.contact.phoneDisplay}`}
             >
               {business.contact.phoneDisplay}
             </a>
             <ThemeToggle />
             <CartButton />
-            {isStaff ? (
+            {isStaff && (
               <button
                 onClick={onSignOut}
                 disabled={signingOut}
-                className="hidden sm:inline-flex rounded-full border border-[var(--hairline)] px-3 py-1.5 text-[12px] text-[var(--ink-muted-80)] hover:border-[var(--ink)] hover:text-[var(--ink)] transition-colors"
+                className="hidden sm:inline-flex rounded-full border border-[var(--hairline)] px-3 py-1.5 text-[12px] text-[var(--ink-muted-80)] hover:border-[var(--ink-muted-32)] hover:text-[var(--ink)] transition-colors"
                 title="Sign out of staff mode"
               >
                 {signingOut ? "Signing out…" : "Sign out"}
               </button>
-            ) : null}
+            )}
             <Link href="/book" className="btn-primary px-4 py-2 text-[14px]">
               Book
             </Link>
@@ -108,6 +131,7 @@ export default function Header({ isStaff = false }: Props) {
               onClick={() => setMobileOpen((v) => !v)}
               className="md:hidden rounded-full border border-[var(--hairline)] p-2 text-[var(--foreground)]"
               aria-label="Toggle menu"
+              aria-expanded={mobileOpen}
             >
               <svg
                 width="18"
@@ -136,28 +160,28 @@ export default function Header({ isStaff = false }: Props) {
         </div>
 
         {mobileOpen && (
-          <div className="md:hidden border-t border-[var(--hairline)] bg-[var(--canvas-parchment)]">
-            <nav className="flex flex-col px-4 py-3">
+          <div className="md:hidden border-t border-[var(--hairline)] glass-strong">
+            <nav className="flex flex-col px-5 py-4">
               {navLinks.map((l) => (
                 <Link
                   key={l.href}
                   href={l.href}
                   onClick={() => setMobileOpen(false)}
-                  className="py-2 text-[15px] text-[var(--foreground)]/90 hover:text-[var(--primary)]"
+                  className="py-3 text-[16px] text-[var(--foreground)] hover:text-[var(--primary)] transition-colors"
                 >
                   {l.label}
                 </Link>
               ))}
               <a
                 href={`tel:${business.contact.phone}`}
-                className="py-2 text-[15px] text-[var(--foreground)]/90"
+                className="py-3 text-[16px] text-[var(--ink-muted-60)] tabular-nums"
               >
                 Call {business.contact.phoneDisplay}
               </a>
               {isStaff && (
                 <button
                   onClick={onSignOut}
-                  className="mt-1 self-start py-2 text-[14px] text-[var(--ink-muted-80)] hover:text-[var(--ink)]"
+                  className="mt-2 self-start py-2 text-[14px] text-[var(--ink-muted-60)] hover:text-[var(--ink)]"
                 >
                   Sign out of staff mode
                 </button>

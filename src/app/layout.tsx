@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+import SmoothScroll from "@/components/SmoothScroll";
 import { CartProvider } from "@/components/cart/CartProvider";
 import CartDrawer from "@/components/cart/CartDrawer";
 import { business } from "@/lib/business";
@@ -54,6 +55,7 @@ export default async function RootLayout({
         />
       </head>
       <body className="min-h-full flex flex-col">
+        <SmoothScroll />
         <CartProvider>
           <Header isStaff={staff} />
           <main className="flex-1">{children}</main>
