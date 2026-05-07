@@ -159,31 +159,37 @@ export default function PromoCarousel() {
         ))}
       </div>
 
-      {/* Prev / Next */}
-      <button
-        onClick={() => go(current - 1)}
-        className="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full flex items-center justify-center text-white text-xl z-10 hover:bg-white/12 transition-colors"
-        style={{
-          background: "rgba(255, 255, 255, 0.06)",
-          border: "1px solid rgba(255, 255, 255, 0.10)",
-          backdropFilter: "blur(8px)",
-        }}
-        aria-label="Previous promotion"
-      >
-        ‹
-      </button>
-      <button
-        onClick={() => go(current + 1)}
-        className="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full flex items-center justify-center text-white text-xl z-10 hover:bg-white/12 transition-colors"
-        style={{
-          background: "rgba(255, 255, 255, 0.06)",
-          border: "1px solid rgba(255, 255, 255, 0.10)",
-          backdropFilter: "blur(8px)",
-        }}
-        aria-label="Next promotion"
-      >
-        ›
-      </button>
+      {/* Prev / Next — bottom-left controls, paired with progress + dots */}
+      <div className="absolute bottom-3 left-5 z-10 flex items-center gap-1.5">
+        <button
+          onClick={() => go(current - 1)}
+          className="w-7 h-7 rounded-full flex items-center justify-center text-white text-base hover:bg-white/12 transition-colors"
+          style={{
+            background: "rgba(255, 255, 255, 0.06)",
+            border: "1px solid rgba(255, 255, 255, 0.12)",
+            backdropFilter: "blur(8px)",
+          }}
+          aria-label="Previous promotion"
+        >
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="15 18 9 12 15 6" />
+          </svg>
+        </button>
+        <button
+          onClick={() => go(current + 1)}
+          className="w-7 h-7 rounded-full flex items-center justify-center text-white text-base hover:bg-white/12 transition-colors"
+          style={{
+            background: "rgba(255, 255, 255, 0.06)",
+            border: "1px solid rgba(255, 255, 255, 0.12)",
+            backdropFilter: "blur(8px)",
+          }}
+          aria-label="Next promotion"
+        >
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="9 18 15 12 9 6" />
+          </svg>
+        </button>
+      </div>
 
       {/* Progress bar */}
       {!paused && (
@@ -231,7 +237,7 @@ export default function PromoCarousel() {
 
 function Slide({ promo }: { promo: (typeof promos)[number] }) {
   return (
-    <div className="min-w-full flex items-center gap-6 px-6 py-6 sm:px-10 sm:py-8">
+    <div className="min-w-full flex items-center gap-6 px-6 pt-6 pb-12 sm:px-10 sm:pt-8 sm:pb-14">
       {/* Left — day label stack */}
       <div className="hidden sm:flex flex-col gap-2 shrink-0 min-w-[112px]">
         <div className="text-[10px] uppercase tracking-[0.2em] text-white/45 font-medium">
