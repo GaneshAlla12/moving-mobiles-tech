@@ -22,6 +22,7 @@ const PUBLIC_NAV = [
 
 const STAFF_NAV_EXTRA = [
   { href: "/staff/appointments", label: "Appointments", desc: "Live from Cal.com" },
+  { href: "/staff/attendance", label: "Time clock", desc: "Sign in / sign out tracking" },
   { href: "/staff/schedule", label: "Schedule", desc: "Weekly staff shifts" },
   { href: "/staff/shop", label: "Shop CMS", desc: "Carousel order + featured" },
   { href: "/staff/pricing", label: "Pricing", desc: "Repair cost overrides" },
