@@ -69,6 +69,16 @@ export default function ScheduleEditor({ weekStart, initialShifts }: Props) {
   const todayYmd = useMemo(() => formatYmd(new Date()), []);
   const isLocked = (date: string) => date < todayYmd;
 
+  // Per-employee weekly hours
+  const hoursByEmployee = useMemo(() => {
+    const m = new Map<Employee, number>();
+    for (const e of EMPLOYEES) m.set(e, 0);
+    for (const s of shifts) {
+      m.set(s.employee, (m.get(s.employee) ?? 0) + 5);
+    }
+    return m;
+  }, [shifts]);
+
   const onSave = async () => {
     setStatus({ kind: "saving" });
     try {
@@ -220,6 +230,61 @@ export default function ScheduleEditor({ weekStart, initialShifts }: Props) {
             </>
           )}
         </div>
+      </div>
+
+      {/* Per-employee weekly hours summary */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {EMPLOYEES.map((e) => {
+          const hrs = hoursByEmployee.get(e) ?? 0;
+          const numShifts = hrs / 5;
+          const dot =
+            hrs === 0
+              ? "var(--ink-muted-32)"
+              : hrs < 20
+                ? "#f59e0b"
+                : hrs <= 40
+                  ? "#22c55e"
+                  : "#ef4444";
+          return (
+            <div
+              key={e}
+              className="rounded-[14px] px-4 py-3"
+              style={{
+                background: "var(--canvas)",
+                border: "1px solid var(--hairline)",
+                boxShadow: "var(--shadow-1)",
+              }}
+            >
+              <div className="flex items-center justify-between gap-2">
+                <div className="text-[12px] uppercase tracking-[0.18em] text-[var(--ink-muted-60)] font-medium">
+                  {e}
+                </div>
+                <span
+                  className="inline-block w-1.5 h-1.5 rounded-full shrink-0"
+                  style={{ background: dot }}
+                  aria-hidden="true"
+                />
+              </div>
+              <div className="mt-1.5 flex items-baseline gap-1.5">
+                <span
+                  className="font-semibold tracking-[-0.02em] tabular-nums"
+                  style={{
+                    fontSize: "26px",
+                    color: hrs === 0 ? "var(--ink-muted-48)" : "var(--ink)",
+                  }}
+                >
+                  {hrs}
+                </span>
+                <span className="text-[12px] text-[var(--ink-muted-60)]">
+                  hrs
+                </span>
+                <span className="ml-auto text-[11px] text-[var(--ink-muted-48)] tabular-nums">
+                  {numShifts} {numShifts === 1 ? "shift" : "shifts"}
+                </span>
+              </div>
+            </div>
+          );
+        })}
       </div>
 
       {/* Schedule grid */}
