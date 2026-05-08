@@ -30,16 +30,15 @@ export function isCalConfigured(): boolean {
 
 async function calFetch(
   path: string,
-  init: RequestInit & { apiKey: string },
+  init: RequestInit & { apiKey: string; apiVersion?: string },
 ): Promise<Response> {
-  const { apiKey, ...rest } = init;
+  const { apiKey, apiVersion, ...rest } = init;
   return fetch(`${BASE}${path}`, {
     ...rest,
     headers: {
       Authorization: `Bearer ${apiKey}`,
       "Content-Type": "application/json",
-      // Cal.com v2 uses a versioned header for some endpoints
-      "cal-api-version": "2024-08-13",
+      "cal-api-version": apiVersion ?? "2024-08-13",
       ...(rest.headers ?? {}),
     },
     cache: "no-store",
@@ -71,6 +70,7 @@ export async function getAvailableSlots(
     const res = await calFetch(`/slots?${params.toString()}`, {
       method: "GET",
       apiKey: cfg.apiKey,
+      apiVersion: "2024-09-04",
     });
     if (!res.ok) {
       console.error("[cal] slots failed", res.status, await res.text());
@@ -140,6 +140,7 @@ export async function createBooking(
     const res = await calFetch("/bookings", {
       method: "POST",
       apiKey: cfg.apiKey,
+      apiVersion: "2026-02-25",
       body: JSON.stringify(body),
     });
     const json = await res.json().catch(() => ({}));
