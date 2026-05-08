@@ -136,11 +136,24 @@ export default function DateTimePicker({ date, time, onChange }: Props) {
           slots: { time: string }[] | null;
         }) => {
           if (seq !== fetchSeq.current) return; // stale response
+          const available = data.slots
+            ? new Set(data.slots.map((s) => s.time))
+            : null;
           setAvailability({
             loading: false,
             configured: !!data.configured,
-            available: data.slots ? new Set(data.slots.map((s) => s.time)) : null,
+            available,
           });
+          // If the previously-selected time is no longer in the available set,
+          // clear it so the user can't proceed with an invalid slot.
+          if (
+            data.configured &&
+            available !== null &&
+            time &&
+            !available.has(time)
+          ) {
+            onChange(date, undefined);
+          }
         },
       )
       .catch(() => {
@@ -151,6 +164,7 @@ export default function DateTimePicker({ date, time, onChange }: Props) {
           available: null,
         });
       });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [date]);
 
   // The slots we actually render: always the in-hours grid; if Cal.com is

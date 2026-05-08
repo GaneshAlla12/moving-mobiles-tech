@@ -121,12 +121,15 @@ export async function POST(req: Request) {
     });
 
     if (!result.ok) {
-      // Common case: slot just got taken, or Cal.com rejected the payload.
-      if (result.status === 409 || /conflict|taken|busy/i.test(result.error)) {
+      // "not available" or "already has booking" → 409 (slot is no longer bookable)
+      if (
+        result.status === 409 ||
+        /conflict|taken|busy|not available|already/i.test(result.error)
+      ) {
         return NextResponse.json(
           {
             error:
-              "That time was just taken. Please pick another slot — your details will be saved.",
+              "That time is no longer available. Please pick another slot — your details will be saved.",
           },
           { status: 409 },
         );
