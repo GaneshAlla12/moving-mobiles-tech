@@ -162,6 +162,80 @@ export async function createBooking(
   }
 }
 
+export type CalBooking = {
+  id: number;
+  uid: string;
+  status: string;
+  start: string; // ISO UTC
+  end: string;
+  duration: number;
+  /** Note text — we put device + issues here on submission */
+  description?: string;
+  /** Structured fields we sent on create */
+  metadata?: {
+    reference?: string;
+    deviceType?: string;
+    brand?: string;
+    model?: string;
+    customDevice?: string;
+    issues?: string;
+    [k: string]: string | undefined;
+  };
+  attendees: Array<{
+    name: string;
+    email: string;
+    timeZone?: string;
+  }>;
+  cancellationReason?: string;
+  rescheduledByEmail?: string | null;
+  meetingUrl?: string;
+};
+
+/**
+ * Lists bookings for our event type, in a given UTC date range.
+ * Returns null when Cal.com is not configured.
+ */
+export async function listBookings(opts: {
+  /** ISO UTC, e.g. "2026-05-01T00:00:00.000Z" */
+  afterStart?: string;
+  beforeStart?: string;
+  /** "accepted" | "cancelled" | "rejected" — Cal.com supports multiple */
+  status?: string[];
+  take?: number;
+}): Promise<CalBooking[] | null> {
+  const cfg = config();
+  if (!cfg) return null;
+
+  const params = new URLSearchParams();
+  params.set("eventTypeIds", String(cfg.eventTypeId));
+  params.set("take", String(opts.take ?? 50));
+  params.set("sortStart", "asc");
+  if (opts.afterStart) params.set("afterStart", opts.afterStart);
+  if (opts.beforeStart) params.set("beforeStart", opts.beforeStart);
+  if (opts.status?.length) {
+    for (const s of opts.status) params.append("status", s);
+  }
+
+  try {
+    const res = await calFetch(`/bookings?${params.toString()}`, {
+      method: "GET",
+      apiKey: cfg.apiKey,
+      apiVersion: "2024-08-13",
+    });
+    if (!res.ok) {
+      console.error("[cal] list bookings failed", res.status, await res.text());
+      return [];
+    }
+    const json = await res.json();
+    const data = json?.data;
+    if (!Array.isArray(data)) return [];
+    return data as CalBooking[];
+  } catch (e) {
+    console.error("[cal] list bookings error", e);
+    return [];
+  }
+}
+
 /**
  * Converts a UTC ISO timestamp to a local HH:MM string in the given IANA TZ.
  * Uses Intl.DateTimeFormat which is reliable across all runtimes.
