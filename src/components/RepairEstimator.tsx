@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { brands, SERVICE_LINES, findModel } from "@/lib/repair-pricing";
+import { brands, findModel } from "@/lib/repair-pricing";
 import BookButton from "./BookButton";
 
 const fmt = (n: number) => "$" + n.toLocaleString("en-US");
@@ -77,17 +77,22 @@ export default function RepairEstimator() {
           </span>
         </div>
         <ul>
-          {SERVICE_LINES.map((line, i) => (
-            <li
-              key={line}
-              className={`flex items-center justify-between px-6 py-3.5 text-[15px] ${i === 0 ? "" : "border-t border-[var(--hairline)]"}`}
-            >
-              <span className="text-[var(--ink-muted-80)]">{line}</span>
-              <span className="font-medium text-[var(--ink)]">
-                {fmt(model.prices[line])}
-              </span>
-            </li>
-          ))}
+          {brand.serviceLines.map((line, i) => {
+            const p = model.prices[line] ?? 0;
+            return (
+              <li
+                key={line}
+                className={`flex items-center justify-between px-6 py-3.5 text-[15px] ${i === 0 ? "" : "border-t border-[var(--hairline)]"}`}
+              >
+                <span className="text-[var(--ink-muted-80)]">{line}</span>
+                <span
+                  className={`font-medium ${p === 0 ? "text-[var(--ink-muted-48)]" : "text-[var(--ink)]"}`}
+                >
+                  {p === 0 ? "Varies — bring it in" : fmt(p)}
+                </span>
+              </li>
+            );
+          })}
         </ul>
       </div>
 
