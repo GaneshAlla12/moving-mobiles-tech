@@ -7,7 +7,7 @@ import SmoothScroll from "@/components/SmoothScroll";
 import { CartProvider } from "@/components/cart/CartProvider";
 import CartDrawer from "@/components/cart/CartDrawer";
 import { business } from "@/lib/business";
-import { isStaff } from "@/lib/auth";
+import { isStaff, getStaffIdentity } from "@/lib/auth";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -40,6 +40,9 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   const staff = await isStaff();
+  const identity = staff ? await getStaffIdentity() : null;
+  const staffName =
+    identity?.kind === "employee" ? identity.name : null;
   return (
     <html
       lang="en"
@@ -57,7 +60,7 @@ export default async function RootLayout({
       <body className="min-h-full flex flex-col">
         <SmoothScroll />
         <CartProvider>
-          <Header isStaff={staff} />
+          <Header isStaff={staff} staffName={staffName} />
           <main className="flex-1">{children}</main>
           <Footer />
           <CartDrawer />

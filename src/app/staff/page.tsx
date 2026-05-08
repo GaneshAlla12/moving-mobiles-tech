@@ -5,7 +5,10 @@ import { useSearchParams } from "next/navigation";
 
 function StaffLoginInner() {
   const sp = useSearchParams();
-  const next = sp.get("next") || "/repair-cost";
+  const rawNext = sp.get("next");
+  const safeNext = rawNext && /^\/[\w/?=&-]*$/.test(rawNext) ? rawNext : null;
+  const identifyHref = `/staff/identify${safeNext ? `?next=${encodeURIComponent(safeNext)}` : ""}`;
+  const next = identifyHref;
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");

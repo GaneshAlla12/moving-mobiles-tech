@@ -15,22 +15,31 @@ import { NextRequest, NextResponse } from "next/server";
  */
 
 export const STAFF_COOKIE = "mm-staff";
+export const STAFF_NAME_COOKIE = "mm-staff-name";
 
 export function middleware(req: NextRequest) {
   const expected = process.env.STAFF_TOKEN;
   const cookie = req.cookies.get(STAFF_COOKIE)?.value;
 
-  if (expected && cookie === expected) {
-    return NextResponse.next();
+  if (!expected || cookie !== expected) {
+    // Not signed in at all — silently send to homepage so customers never
+    // discover the staff-only URLs.
+    const url = req.nextUrl.clone();
+    url.pathname = "/";
+    url.search = "";
+    return NextResponse.redirect(url);
   }
 
-  // Customer hit a staff-only URL — silently send them to the homepage.
-  // No login prompt is shown, so customers never know staff-only routes exist.
-  // Employees access the login page directly at /staff.
-  const url = req.nextUrl.clone();
-  url.pathname = "/";
-  url.search = "";
-  return NextResponse.redirect(url);
+  // Signed in but no identity yet → bounce to /staff/identify.
+  const name = req.cookies.get(STAFF_NAME_COOKIE)?.value;
+  if (!name && !req.nextUrl.pathname.startsWith("/staff/identify")) {
+    const url = req.nextUrl.clone();
+    url.pathname = "/staff/identify";
+    url.search = `?next=${encodeURIComponent(req.nextUrl.pathname + req.nextUrl.search)}`;
+    return NextResponse.redirect(url);
+  }
+
+  return NextResponse.next();
 }
 
 export const config = {
@@ -50,5 +59,6 @@ export const config = {
     "/staff/appointments/:path*",
     "/staff/attendance",
     "/staff/attendance/:path*",
+    "/staff/identify",
   ],
 };

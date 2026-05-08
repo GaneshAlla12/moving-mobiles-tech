@@ -58,8 +58,7 @@ export default function AttendanceView({
   const [summaries, setSummaries] =
     useState<EmployeeDaySummary[]>(initialSummaries);
   const [punches, setPunches] = useState<Punch[]>(initialPunches);
-  const [busy, setBusy] = useState<Employee | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [error] = useState<string | null>(null);
 
   // Refresh summaries every 30s when viewing today (so "currently signed in"
   // counters tick up). Skip on past days — they're stable.
@@ -74,32 +73,24 @@ export default function AttendanceView({
 
   const totalActive = summaries.filter((s) => s.status === "in").length;
 
-  const onPunch = async (employee: Employee, type: "in" | "out") => {
-    if (!isToday || busy) return;
-    setBusy(employee);
-    setError(null);
-    try {
-      const res = await fetch("/api/staff/attendance", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ employee, type }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data?.error ?? "Punch failed");
-
-      // Refresh full state from server so summaries are authoritative
-      const refresh = await fetch(`/api/staff/attendance?date=${date}`, {
-        cache: "no-store",
-      });
-      const fresh = await refresh.json();
-      setPunches(fresh?.log?.punches ?? []);
-      setSummaries(fresh?.summaries ?? []);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Punch failed");
-    } finally {
-      setBusy(null);
-    }
-  };
+  // Auto-refresh today's data every 30s so the page stays current as
+  // employees sign in/out via the staff portal.
+  useEffect(() => {
+    if (!isToday) return;
+    const tick = setInterval(async () => {
+      try {
+        const r = await fetch(`/api/staff/attendance?date=${date}`, {
+          cache: "no-store",
+        });
+        const fresh = await r.json();
+        if (fresh?.log) {
+          setPunches(fresh.log.punches ?? []);
+          setSummaries(fresh.summaries ?? []);
+        }
+      } catch {}
+    }, 30000);
+    return () => clearInterval(tick);
+  }, [isToday, date]);
 
   const goDate = (delta: number) => {
     const d = new Date(date + "T00:00:00");
@@ -242,8 +233,6 @@ export default function AttendanceView({
               key={employee}
               summary={summary}
               isToday={isToday}
-              busy={busy === employee}
-              onPunch={(type) => onPunch(employee, type)}
             />
           );
         })}
@@ -302,17 +291,12 @@ function recomputeMinutes(s: EmployeeDaySummary): EmployeeDaySummary {
 function ClockCard({
   summary,
   isToday,
-  busy,
-  onPunch,
 }: {
   summary: EmployeeDaySummary;
   isToday: boolean;
-  busy: boolean;
-  onPunch: (type: "in" | "out") => void;
 }) {
   const palette = PALETTE[summary.employee];
   const isIn = summary.status === "in";
-  const willPunch: "in" | "out" = isIn ? "out" : "in";
 
   return (
     <div
@@ -377,25 +361,19 @@ function ClockCard({
           )}
         </div>
 
-        {/* Action button */}
-        <button
-          onClick={() => onPunch(willPunch)}
-          disabled={!isToday || busy}
-          className="mt-4 w-full rounded-full py-2.5 text-[14px] font-semibold transition-all disabled:cursor-not-allowed"
-          style={{
-            background: isIn
-              ? "var(--canvas-elevated)"
-              : palette.bg,
-            color: isIn ? "var(--ink)" : "white",
-            border: `1px solid ${isIn ? "var(--hairline-strong)" : "transparent"}`,
-            boxShadow: isIn
-              ? "none"
-              : `0 1px 2px ${palette.soft}, 0 6px 18px ${palette.soft}`,
-            opacity: !isToday || busy ? 0.5 : 1,
-          }}
-        >
-          {busy ? "…" : willPunch === "in" ? "Clock in" : "Clock out"}
-        </button>
+        {/* Auto-tracking hint */}
+        {isToday && summary.status === "off" && (
+          <div
+            className="mt-4 rounded-[10px] px-3 py-2 text-[11px] text-[var(--ink-muted-60)] leading-[1.4]"
+            style={{
+              background: "var(--canvas-elevated)",
+              border: "1px dashed var(--hairline)",
+            }}
+          >
+            Will clock in automatically when {summary.employee} signs into
+            the staff portal.
+          </div>
+        )}
 
         {/* Segment list */}
         {summary.segments.length > 0 && (

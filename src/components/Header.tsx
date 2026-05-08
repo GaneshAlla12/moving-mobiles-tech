@@ -11,7 +11,24 @@ import Logo from "./Logo";
 type Props = {
   /** Whether the visitor has a valid staff cookie. Comes from layout. */
   isStaff?: boolean;
+  /** Identified employee name, if any. null = manager / not yet identified. */
+  staffName?: string | null;
 };
+
+const EMPLOYEE_HUE: Record<string, string> = {
+  Satya: "#0071e3",
+  Niteesh: "#8b5cf6",
+  Bharath: "#10b981",
+  Trainee: "#f59e0b",
+};
+
+const initialsOf = (name: string) =>
+  name
+    .split(/\s+/)
+    .map((p) => p[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase() || name.slice(0, 2).toUpperCase();
 
 const PUBLIC_NAV = [
   { href: "/shop", label: "Shop" },
@@ -29,7 +46,7 @@ const STAFF_NAV_EXTRA = [
   { href: "/repair-cost", label: "Repair cost", desc: "Public estimator" },
 ];
 
-export default function Header({ isStaff = false }: Props) {
+export default function Header({ isStaff = false, staffName = null }: Props) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
   const [scrolled, setScrolled] = useState(false);
@@ -223,14 +240,50 @@ export default function Header({ isStaff = false }: Props) {
             )}
             <ThemeToggle />
             <CartButton />
+            {isStaff && staffName && (
+              <span
+                className="hidden sm:inline-flex items-center gap-1.5 rounded-full pl-1 pr-3 py-1 text-[12px] font-semibold tabular-nums"
+                style={{
+                  background: "var(--canvas-elevated)",
+                  border: "1px solid var(--hairline)",
+                  color: "var(--ink)",
+                }}
+                title={`Signed in as ${staffName}`}
+              >
+                <span
+                  className="grid place-items-center rounded-full text-white font-semibold"
+                  style={{
+                    width: 22,
+                    height: 22,
+                    fontSize: 10,
+                    background:
+                      EMPLOYEE_HUE[staffName]
+                        ? `linear-gradient(135deg, ${EMPLOYEE_HUE[staffName]} 0%, ${EMPLOYEE_HUE[staffName]}cc 100%)`
+                        : "var(--ink)",
+                  }}
+                  aria-hidden="true"
+                >
+                  {initialsOf(staffName)}
+                </span>
+                {staffName}
+              </span>
+            )}
             {isStaff && (
               <button
                 onClick={onSignOut}
                 disabled={signingOut}
                 className="hidden sm:inline-flex rounded-full border border-[var(--hairline)] px-3 py-1.5 text-[12px] text-[var(--ink-muted-80)] hover:border-[var(--ink-muted-32)] hover:text-[var(--ink)] transition-colors"
-                title="Sign out of staff mode"
+                title={
+                  staffName
+                    ? `Sign out of ${staffName} (clocks you out)`
+                    : "Sign out of staff mode"
+                }
               >
-                {signingOut ? "Signing out…" : "Sign out"}
+                {signingOut
+                  ? "Signing out…"
+                  : staffName
+                    ? "Clock out"
+                    : "Sign out"}
               </button>
             )}
             <Link href="/book" className="btn-primary px-4 py-2 text-[14px]">
