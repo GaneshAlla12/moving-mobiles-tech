@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   generateTimeSlots,
   isOpenOn,
@@ -97,10 +97,10 @@ export default function DateTimePicker({ date, time, onChange }: Props) {
     return new Date(y, m - 1, d);
   }, [date]);
 
-  const slots = useMemo(() => {
+  // In-hours slots based on shop weekly schedule
+  const localSlots = useMemo(() => {
     if (!selectedDate) return [];
     const all = generateTimeSlots(selectedDate);
-    // If selected is today, hide past slots (give 1h lead)
     if (isSameDay(selectedDate, today)) {
       const now = new Date();
       const cutoffMin = now.getHours() * 60 + now.getMinutes() + 60;
@@ -111,6 +111,52 @@ export default function DateTimePicker({ date, time, onChange }: Props) {
     }
     return all;
   }, [selectedDate, today]);
+
+  // Cal.com availability state
+  const [availability, setAvailability] = useState<{
+    loading: boolean;
+    configured: boolean;
+    /** When configured: set of HH:MM strings that are actually bookable. */
+    available: Set<string> | null;
+  }>({ loading: false, configured: false, available: null });
+  const fetchSeq = useRef(0);
+
+  useEffect(() => {
+    if (!date) {
+      setAvailability({ loading: false, configured: false, available: null });
+      return;
+    }
+    const seq = ++fetchSeq.current;
+    setAvailability((p) => ({ ...p, loading: true }));
+    fetch(`/api/availability?date=${date}`, { cache: "no-store" })
+      .then((r) => r.json())
+      .then(
+        (data: {
+          configured: boolean;
+          slots: { time: string }[] | null;
+        }) => {
+          if (seq !== fetchSeq.current) return; // stale response
+          setAvailability({
+            loading: false,
+            configured: !!data.configured,
+            available: data.slots ? new Set(data.slots.map((s) => s.time)) : null,
+          });
+        },
+      )
+      .catch(() => {
+        if (seq !== fetchSeq.current) return;
+        setAvailability({
+          loading: false,
+          configured: false,
+          available: null,
+        });
+      });
+  }, [date]);
+
+  // The slots we actually render: always the in-hours grid; if Cal.com is
+  // configured we keep all slots visible but disable ones that aren't in
+  // the available set so the customer can see why fewer are pickable.
+  const slots = localSlots;
 
   const canPrev = viewMonth.getFullYear() > today.getFullYear() ||
     (viewMonth.getFullYear() === today.getFullYear() &&
@@ -237,25 +283,47 @@ export default function DateTimePicker({ date, time, onChange }: Props) {
           </p>
         ) : (
           <>
-            <div className="mt-1 text-[13px] text-[var(--ink-muted-48)]">
-              {selectedDate.toLocaleDateString("en-US", {
-                weekday: "long",
-                month: "long",
-                day: "numeric",
-              })}
+            <div className="mt-1 flex items-center gap-2 text-[13px] text-[var(--ink-muted-48)]">
+              <span>
+                {selectedDate.toLocaleDateString("en-US", {
+                  weekday: "long",
+                  month: "long",
+                  day: "numeric",
+                })}
+              </span>
+              {availability.loading && (
+                <span className="inline-flex items-center gap-1.5">
+                  <span
+                    className="inline-block w-1.5 h-1.5 rounded-full"
+                    style={{
+                      background: "var(--primary)",
+                      animation: "mm-glow-pulse 1.2s ease-in-out infinite",
+                    }}
+                  />
+                  Checking availability…
+                </span>
+              )}
             </div>
             <div className="mt-4 grid grid-cols-2 gap-2 max-h-[360px] overflow-y-auto pr-1">
               {slots.map((s) => {
                 const isSel = time === s;
+                const taken =
+                  availability.configured &&
+                  availability.available !== null &&
+                  !availability.available.has(s);
                 return (
                   <button
                     key={s}
-                    onClick={() => onPickTime(s)}
+                    onClick={() => !taken && onPickTime(s)}
+                    disabled={taken}
+                    title={taken ? "Already booked" : undefined}
                     className={[
                       "rounded-full px-3 py-2 text-[14px] border transition-colors",
                       isSel
                         ? "border-[var(--ink)] bg-[var(--ink)] text-white"
-                        : "border-[var(--hairline)] hover:border-[var(--ink)] text-[var(--ink)]",
+                        : taken
+                          ? "border-[var(--hairline)] text-[var(--ink-muted-48)] line-through opacity-50 cursor-not-allowed"
+                          : "border-[var(--hairline)] hover:border-[var(--ink)] text-[var(--ink)]",
                     ].join(" ")}
                   >
                     {formatTime12h(s)}
@@ -263,6 +331,14 @@ export default function DateTimePicker({ date, time, onChange }: Props) {
                 );
               })}
             </div>
+            {availability.configured &&
+              availability.available !== null &&
+              availability.available.size === 0 &&
+              !availability.loading && (
+                <p className="mt-3 text-[12px] text-[var(--ink-muted-48)]">
+                  No slots open on this day — try another date.
+                </p>
+              )}
           </>
         )}
       </div>

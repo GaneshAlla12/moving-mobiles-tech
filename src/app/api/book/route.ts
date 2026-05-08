@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
-import { generateReference, type BookingState } from "@/lib/booking";
+import {
+  generateReference,
+  deviceLabelFor,
+  type BookingState,
+} from "@/lib/booking";
 import { clientIpFrom, rateLimit } from "@/lib/rate-limit";
+import { createBooking, isCalConfigured } from "@/lib/cal-com";
 
 /**
  * Booking submission endpoint.
@@ -11,8 +16,10 @@ import { clientIpFrom, rateLimit } from "@/lib/rate-limit";
  *   - Input length caps: prevents oversized payloads
  *   - Strict validation: rejects missing or malformed fields
  *
- * Currently logs the booking server-side and returns a reference.
- * Replace the logging with a real integration (email, Slack, DB) when ready.
+ * When Cal.com is configured (env: CAL_COM_API_KEY + CAL_COM_EVENT_TYPE_ID),
+ * the booking is created in Cal.com which handles event creation, customer
+ * email confirmation, and staff notification. Otherwise we fall back to
+ * server-side logging so the flow still works in dev.
  */
 
 export const runtime = "nodejs";
@@ -22,6 +29,7 @@ const MAX_EMAIL_LEN = 200;
 const MAX_PHONE_LEN = 30;
 const MAX_DESC_LEN = 800;
 const MAX_ISSUES = 20;
+const SHOP_TZ = process.env.CAL_COM_TIMEZONE ?? "America/New_York";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -49,7 +57,6 @@ export async function POST(req: Request) {
 
   // Honeypot: bots fill every field. Real users never see this field.
   if (payload._honeypot && payload._honeypot.length > 0) {
-    // Pretend to succeed so bots don't retry.
     return NextResponse.json({ reference: generateReference() });
   }
 
@@ -62,7 +69,7 @@ export async function POST(req: Request) {
     return bad("Missing contact details");
   }
 
-  // Length caps — prevents oversized payloads from slipping through.
+  // Length caps
   if (
     c.name.length > MAX_NAME_LEN ||
     c.email.length > MAX_EMAIL_LEN ||
@@ -82,19 +89,68 @@ export async function POST(req: Request) {
     return bad("Invalid time format");
 
   const reference = generateReference();
+  const device = deviceLabelFor(payload);
+  const issues = payload.issues?.length ? payload.issues.join(", ") : "—";
 
-  // Server-side log so the shop owner can see incoming bookings.
-  // Replace with email/Slack/DB hook when ready.
+  // If Cal.com is configured, create the booking there.
+  if (isCalConfigured()) {
+    const startUtc = localTimeToUtcIso(payload.date, payload.time, SHOP_TZ);
+    const notes = [
+      `Device: ${device}`,
+      `Issues: ${issues}`,
+      payload.description ? `Notes: ${payload.description}` : null,
+      `Reference: ${reference}`,
+    ]
+      .filter(Boolean)
+      .join("\n");
+
+    const result = await createBooking({
+      start: startUtc,
+      name: c.name.trim(),
+      email: c.email.trim(),
+      phone: c.phone.trim(),
+      notes,
+      metadata: {
+        reference,
+        deviceType: payload.deviceType,
+        brand: payload.brand ?? "",
+        model: payload.model ?? "",
+        customDevice: payload.customDevice ?? "",
+        issues,
+      },
+    });
+
+    if (!result.ok) {
+      // Common case: slot just got taken, or Cal.com rejected the payload.
+      if (result.status === 409 || /conflict|taken|busy/i.test(result.error)) {
+        return NextResponse.json(
+          {
+            error:
+              "That time was just taken. Please pick another slot — your details will be saved.",
+          },
+          { status: 409 },
+        );
+      }
+      console.error("[book] Cal.com error:", result.error);
+      return NextResponse.json(
+        {
+          error: "Couldn't reach the booking calendar. Try again in a moment.",
+        },
+        { status: 503 },
+      );
+    }
+
+    console.log(
+      `[book] Cal.com booking created uid=${result.uid} ref=${reference} ${device} ${payload.date} ${payload.time}`,
+    );
+    return NextResponse.json({ reference, uid: result.uid });
+  }
+
+  // Fallback: log only (Cal.com not configured)
   console.log("\n=========== NEW BOOKING ===========");
   console.log("Reference :", reference);
-  console.log(
-    "Device    :",
-    payload.deviceType,
-    payload.brand,
-    payload.model,
-    payload.customDevice ?? "",
-  );
-  console.log("Issues    :", payload.issues.join(", "));
+  console.log("Device    :", device);
+  console.log("Issues    :", issues);
   console.log("Notes     :", payload.description || "—");
   console.log("When      :", payload.date, payload.time);
   console.log("Customer  :", c.name, "·", c.email, "·", c.phone);
@@ -102,4 +158,42 @@ export async function POST(req: Request) {
   console.log("====================================\n");
 
   return NextResponse.json({ reference });
+}
+
+/**
+ * Converts a local YYYY-MM-DD + HH:MM in the given IANA tz to a UTC ISO
+ * string. No external date library required.
+ *
+ * Trick: format a UTC moment in the target tz, see what wall-clock it
+ * shows, then subtract the offset.
+ */
+function localTimeToUtcIso(
+  dateIso: string,
+  hhmm: string,
+  tz: string,
+): string {
+  const fakeUtc = new Date(`${dateIso}T${hhmm}:00.000Z`);
+  const fmt = new Intl.DateTimeFormat("en-US", {
+    timeZone: tz,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  });
+  const parts = Object.fromEntries(
+    fmt.formatToParts(fakeUtc).map((p) => [p.type, p.value]),
+  );
+  const tzAsUtc = Date.UTC(
+    Number(parts.year),
+    Number(parts.month) - 1,
+    Number(parts.day),
+    Number(parts.hour) % 24,
+    Number(parts.minute),
+    Number(parts.second),
+  );
+  const offsetMs = fakeUtc.getTime() - tzAsUtc;
+  return new Date(fakeUtc.getTime() + offsetMs).toISOString();
 }
