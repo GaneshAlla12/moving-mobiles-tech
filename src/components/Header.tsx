@@ -22,6 +22,7 @@ const PUBLIC_NAV = [
 const STAFF_NAV_EXTRA = [
   { href: "/repair-cost", label: "Repair cost" },
   { href: "/staff/shop", label: "Shop CMS" },
+  { href: "/staff/pricing", label: "Pricing" },
   { href: "/staff/schedule", label: "Schedule" },
 ];
 

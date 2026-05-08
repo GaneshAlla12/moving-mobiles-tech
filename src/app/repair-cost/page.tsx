@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import RepairEstimator from "@/components/RepairEstimator";
 import { business } from "@/lib/business";
+import { getEffectiveBrands } from "@/lib/pricing-config";
 
 export const metadata: Metadata = {
   title: "Repair Cost Estimate",
@@ -8,7 +9,11 @@ export const metadata: Metadata = {
     "Estimate the cost to repair your iPhone (14, 15, 16, Air, 17 series) or Samsung Galaxy (S21–S25, Z Fold, Z Flip, Note 20) — battery, screen, back glass, camera, and more.",
 };
 
-export default function RepairCost() {
+// Always render fresh so price updates from /staff/pricing reflect immediately.
+export const dynamic = "force-dynamic";
+
+export default async function RepairCost() {
+  const brands = await getEffectiveBrands();
   return (
     <>
       <section className="tile-light">
@@ -32,7 +37,7 @@ export default function RepairCost() {
 
       <section className="tile-light">
         <div className="mx-auto max-w-4xl px-4 sm:px-6 pb-20">
-          <RepairEstimator />
+          <RepairEstimator brands={brands} />
         </div>
       </section>
 

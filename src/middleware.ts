@@ -44,5 +44,7 @@ export const config = {
     "/staff/shop/:path*",
     "/staff/schedule",
     "/staff/schedule/:path*",
+    "/staff/pricing",
+    "/staff/pricing/:path*",
   ],
 };

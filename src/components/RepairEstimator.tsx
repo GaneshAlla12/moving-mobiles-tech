@@ -1,22 +1,27 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { brands, findModel } from "@/lib/repair-pricing";
+import type { Brand } from "@/lib/repair-pricing";
 import BookButton from "./BookButton";
 
 const fmt = (n: number) => "$" + n.toLocaleString("en-US");
 
-export default function RepairEstimator() {
+type Props = {
+  /** Effective brands (defaults merged with saved CMS overrides). */
+  brands: Brand[];
+};
+
+export default function RepairEstimator({ brands }: Props) {
   const [brandKey, setBrandKey] = useState<string>(brands[0].key);
   const [modelKey, setModelKey] = useState<string>(brands[0].models[0].key);
 
   const brand = useMemo(
     () => brands.find((b) => b.key === brandKey) ?? brands[0],
-    [brandKey],
+    [brands, brandKey],
   );
   const model = useMemo(
-    () => findModel(brandKey, modelKey) ?? brand.models[0],
-    [brandKey, modelKey, brand],
+    () => brand.models.find((m) => m.key === modelKey) ?? brand.models[0],
+    [brand, modelKey],
   );
 
   const onBrandChange = (key: string) => {
