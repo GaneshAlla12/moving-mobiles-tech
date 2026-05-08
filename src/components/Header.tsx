@@ -159,10 +159,8 @@ export default function Header({ isStaff = false }: Props) {
                     role="menu"
                     className="absolute right-0 top-full mt-2 min-w-[260px] rounded-[14px] p-1.5 z-50"
                     style={{
-                      background: "var(--glass-bg-strong)",
-                      backdropFilter: "saturate(180%) blur(20px)",
-                      WebkitBackdropFilter: "saturate(180%) blur(20px)",
-                      border: "1px solid var(--hairline)",
+                      background: "var(--canvas)",
+                      border: "1px solid var(--hairline-strong)",
                       boxShadow: "var(--shadow-3)",
                     }}
                   >
@@ -270,7 +268,10 @@ export default function Header({ isStaff = false }: Props) {
         </div>
 
         {mobileOpen && (
-          <div className="md:hidden border-t border-[var(--hairline)] glass-strong">
+          <div
+            className="md:hidden border-t border-[var(--hairline)]"
+            style={{ background: "var(--canvas)" }}
+          >
             <nav className="flex flex-col px-5 py-4">
               {PUBLIC_NAV.map((l) => (
                 <Link
