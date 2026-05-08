@@ -555,7 +555,7 @@ function StatusBadge({ status }: { status: Status }) {
           className="inline-block w-1.5 h-1.5 rounded-full"
           style={{ background: "#22c55e" }}
         />
-        Saved {status.at}
+        Saved
       </span>
     );
   if (status.kind === "error")
