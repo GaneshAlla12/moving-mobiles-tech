@@ -26,6 +26,48 @@ type Status =
 
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;
 
+/** Per-employee identity. Used for shift card accents, avatars, and stats. */
+const PALETTE: Record<
+  Employee,
+  { hue: string; bg: string; ring: string; soft: string }
+> = {
+  Satya: {
+    hue: "#0071e3",
+    bg: "linear-gradient(135deg, #0071e3 0%, #0058b8 100%)",
+    ring: "rgba(0, 113, 227, 0.35)",
+    soft: "rgba(0, 113, 227, 0.10)",
+  },
+  Niteesh: {
+    hue: "#8b5cf6",
+    bg: "linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%)",
+    ring: "rgba(139, 92, 246, 0.35)",
+    soft: "rgba(139, 92, 246, 0.10)",
+  },
+  Bharath: {
+    hue: "#10b981",
+    bg: "linear-gradient(135deg, #10b981 0%, #059669 100%)",
+    ring: "rgba(16, 185, 129, 0.35)",
+    soft: "rgba(16, 185, 129, 0.10)",
+  },
+  Trainee: {
+    hue: "#f59e0b",
+    bg: "linear-gradient(135deg, #f59e0b 0%, #d97706 100%)",
+    ring: "rgba(245, 158, 11, 0.35)",
+    soft: "rgba(245, 158, 11, 0.10)",
+  },
+};
+
+const initialsOf = (name: string) =>
+  name.length <= 2
+    ? name.toUpperCase()
+    : name
+        .split(/\s+/)
+        .map((p) => p[0])
+        .join("")
+        .slice(0, 2)
+        .toUpperCase() ||
+      name.slice(0, 2).toUpperCase();
+
 export default function ScheduleEditor({ weekStart, initialShifts }: Props) {
   const [shifts, setShifts] = useState<Shift[]>(initialShifts);
   const [editing, setEditing] = useState<{
@@ -238,50 +280,66 @@ export default function ScheduleEditor({ weekStart, initialShifts }: Props) {
         {EMPLOYEES.map((e) => {
           const hrs = hoursByEmployee.get(e) ?? 0;
           const numShifts = hrs / 5;
-          const dot =
-            hrs === 0
-              ? "var(--ink-muted-32)"
-              : hrs < 20
-                ? "#f59e0b"
-                : hrs <= 40
-                  ? "#22c55e"
-                  : "#ef4444";
+          const palette = PALETTE[e];
+          // Visual fill of the hour bar, capped at 40h baseline
+          const fill = Math.min(1, hrs / 40);
           return (
             <div
               key={e}
-              className="rounded-[14px] px-4 py-3"
+              className="relative rounded-[16px] p-4 overflow-hidden transition-all"
               style={{
                 background: "var(--canvas)",
                 border: "1px solid var(--hairline)",
                 boxShadow: "var(--shadow-1)",
               }}
             >
-              <div className="flex items-center justify-between gap-2">
-                <div className="text-[12px] uppercase tracking-[0.18em] text-[var(--ink-muted-60)] font-medium">
-                  {e}
-                </div>
-                <span
-                  className="inline-block w-1.5 h-1.5 rounded-full shrink-0"
-                  style={{ background: dot }}
-                  aria-hidden="true"
+              {/* Color wash for active employees */}
+              {hrs > 0 && (
+                <div
+                  className="absolute inset-0 pointer-events-none opacity-[0.06]"
+                  style={{ background: palette.bg }}
                 />
+              )}
+
+              <div className="relative flex items-center gap-3">
+                <Avatar employee={e} size={40} />
+                <div className="min-w-0">
+                  <div className="text-[13px] font-semibold text-[var(--ink)] tracking-[-0.011em] truncate">
+                    {e}
+                  </div>
+                  <div className="text-[10px] uppercase tracking-[0.18em] text-[var(--ink-muted-60)]">
+                    {numShifts} {numShifts === 1 ? "shift" : "shifts"}
+                  </div>
+                </div>
+                <div className="ml-auto text-right">
+                  <div className="font-semibold tracking-[-0.02em] tabular-nums leading-none"
+                    style={{
+                      fontSize: "26px",
+                      color: hrs === 0 ? "var(--ink-muted-48)" : "var(--ink)",
+                    }}
+                  >
+                    {hrs}
+                  </div>
+                  <div className="text-[10px] text-[var(--ink-muted-60)] mt-0.5">
+                    hrs
+                  </div>
+                </div>
               </div>
-              <div className="mt-1.5 flex items-baseline gap-1.5">
-                <span
-                  className="font-semibold tracking-[-0.02em] tabular-nums"
+
+              {/* Hour bar */}
+              <div
+                className="relative mt-3 h-[5px] rounded-full overflow-hidden"
+                style={{ background: "var(--canvas-elevated)" }}
+              >
+                <div
+                  className="absolute inset-y-0 left-0 rounded-full transition-all"
                   style={{
-                    fontSize: "26px",
-                    color: hrs === 0 ? "var(--ink-muted-48)" : "var(--ink)",
+                    width: `${Math.max(fill * 100, hrs > 0 ? 6 : 0)}%`,
+                    background: palette.bg,
+                    transitionDuration: "var(--dur-3)",
+                    transitionTimingFunction: "var(--ease-out-expo)",
                   }}
-                >
-                  {hrs}
-                </span>
-                <span className="text-[12px] text-[var(--ink-muted-60)]">
-                  hrs
-                </span>
-                <span className="ml-auto text-[11px] text-[var(--ink-muted-48)] tabular-nums">
-                  {numShifts} {numShifts === 1 ? "shift" : "shifts"}
-                </span>
+                />
               </div>
             </div>
           );
@@ -331,10 +389,19 @@ export default function ScheduleEditor({ weekStart, initialShifts }: Props) {
               return (
                 <tr key={employee}>
                   <td
-                    className={`sticky left-0 bg-[var(--canvas)] z-10 px-5 py-4 text-[14px] font-semibold ${isLast ? "" : "border-b border-[var(--hairline)]"}`}
-                    style={{ color: "var(--ink)" }}
+                    className={`sticky left-0 bg-[var(--canvas)] z-10 px-4 py-3 ${isLast ? "" : "border-b border-[var(--hairline)]"}`}
                   >
-                    {employee}
+                    <div className="flex items-center gap-2.5 min-w-[140px]">
+                      <Avatar employee={employee} size={30} />
+                      <div className="min-w-0">
+                        <div className="text-[14px] font-semibold tracking-[-0.011em] text-[var(--ink)] truncate">
+                          {employee}
+                        </div>
+                        <div className="text-[10px] tabular-nums text-[var(--ink-muted-48)] mt-0.5">
+                          {hoursByEmployee.get(employee) ?? 0}h this week
+                        </div>
+                      </div>
+                    </div>
                   </td>
                   {weekDates.map((date) => {
                     const shift = shiftMap.get(`${employee}|${date}`);
@@ -346,6 +413,7 @@ export default function ScheduleEditor({ weekStart, initialShifts }: Props) {
                       <ScheduleCell
                         key={date}
                         date={date}
+                        employee={employee}
                         shift={shift}
                         isToday={isToday}
                         locked={locked}
@@ -365,18 +433,163 @@ export default function ScheduleEditor({ weekStart, initialShifts }: Props) {
         </table>
       </div>
 
+      {/* Daily coverage strip */}
+      <div
+        className="rounded-[16px] overflow-hidden"
+        style={{
+          background: "var(--canvas)",
+          border: "1px solid var(--hairline)",
+          boxShadow: "var(--shadow-1)",
+        }}
+      >
+        <div className="px-5 py-3 flex items-center gap-3 border-b border-[var(--hairline)]">
+          <div className="text-[10px] uppercase tracking-[0.18em] text-[var(--ink-muted-48)] font-medium">
+            Daily coverage
+          </div>
+          <div className="ml-auto text-[11px] text-[var(--ink-muted-60)]">
+            People working each day · max 4
+          </div>
+        </div>
+        <div className="grid grid-cols-7">
+          {weekDates.map((date, i) => {
+            const working = EMPLOYEES.filter((e) =>
+              shiftMap.has(`${e}|${date}`),
+            );
+            const count = working.length;
+            const fill = count / EMPLOYEES.length;
+            const isTodayCol = date === today;
+            return (
+              <div
+                key={date}
+                className={`p-3 text-center ${i < 6 ? "border-r border-[var(--hairline)]" : ""}`}
+                style={{
+                  background: isTodayCol ? "var(--primary-soft)" : "transparent",
+                }}
+              >
+                <div className="text-[10px] uppercase tracking-[0.18em] text-[var(--ink-muted-60)]">
+                  {DAYS[i]}
+                </div>
+                <div className="mt-1.5 text-[18px] font-semibold tabular-nums leading-none"
+                  style={{
+                    color:
+                      count === 0
+                        ? "var(--ink-muted-48)"
+                        : "var(--ink)",
+                  }}
+                >
+                  {count}
+                  <span className="text-[12px] text-[var(--ink-muted-48)] font-normal ml-0.5">
+                    /4
+                  </span>
+                </div>
+                {/* Stacked avatars of who's working */}
+                <div className="mt-2 flex items-center justify-center min-h-[18px]">
+                  {working.length === 0 ? (
+                    <div className="w-2 h-2 rounded-full bg-[var(--canvas-elevated)] border border-[var(--hairline)]" />
+                  ) : (
+                    <div className="flex -space-x-1.5">
+                      {working.map((e) => (
+                        <span
+                          key={e}
+                          className="grid place-items-center rounded-full text-[8px] font-semibold text-white"
+                          style={{
+                            width: 18,
+                            height: 18,
+                            background: PALETTE[e].bg,
+                            boxShadow: "0 0 0 2px var(--canvas)",
+                          }}
+                          title={e}
+                        >
+                          {initialsOf(e)[0]}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                {/* Fill bar */}
+                <div
+                  className="mt-2 h-[3px] rounded-full overflow-hidden mx-auto"
+                  style={{
+                    background: "var(--canvas-elevated)",
+                    width: "60%",
+                  }}
+                >
+                  <div
+                    className="h-full rounded-full transition-all"
+                    style={{
+                      width: `${Math.max(fill * 100, count > 0 ? 12 : 0)}%`,
+                      background:
+                        count === 0
+                          ? "var(--ink-muted-32)"
+                          : count <= 1
+                            ? "#f59e0b"
+                            : count <= 3
+                              ? "var(--primary)"
+                              : "#22c55e",
+                      transitionDuration: "var(--dur-3)",
+                      transitionTimingFunction: "var(--ease-out-expo)",
+                    }}
+                  />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
       {/* Help text */}
       <p className="text-[12px] text-[var(--ink-muted-48)] leading-[1.5]">
         Tip: shifts are 5 hours. Click a cell to add a shift, click an existing
         shift to change its start time or remove it. Don&apos;t forget to{" "}
         <strong>Save week</strong> when you&apos;re done.
       </p>
+
+      <style>{`
+        .mm-shift {
+          transition: transform 250ms var(--ease-out-expo),
+                      box-shadow 250ms var(--ease-out-expo);
+          will-change: transform;
+        }
+        .mm-shift:hover {
+          transform: translateY(-2px) scale(1.04);
+        }
+        .mm-shift:active {
+          transform: scale(0.98);
+        }
+        .mm-shift-sheen {
+          opacity: 0;
+          transform: translateX(-110%);
+          transition: opacity 220ms var(--ease-out-expo),
+                      transform 800ms var(--ease-out-expo);
+        }
+        .mm-shift:hover .mm-shift-sheen {
+          opacity: 1;
+          transform: translateX(110%);
+        }
+        .mm-shift-locked {
+          transition: opacity 180ms var(--ease-out-expo);
+        }
+        .mm-empty {
+          transition: all 200ms var(--ease-out-expo);
+        }
+        .mm-empty:hover {
+          transform: scale(1.02);
+        }
+        @keyframes mm-shift-pop {
+          from { opacity: 0; transform: scale(0.96) translateY(2px); }
+          to   { opacity: 1; transform: scale(1) translateY(0); }
+        }
+        .mm-shift, .mm-shift-locked {
+          animation: mm-shift-pop 280ms var(--ease-out-expo) both;
+        }
+      `}</style>
     </div>
   );
 }
 
 function ScheduleCell({
   date,
+  employee,
   shift,
   isToday,
   locked,
@@ -388,6 +601,7 @@ function ScheduleCell({
   onClose,
 }: {
   date: string;
+  employee: Employee;
   shift?: Shift;
   isToday: boolean;
   locked: boolean;
@@ -399,6 +613,7 @@ function ScheduleCell({
   onClose: () => void;
 }) {
   const cellRef = useRef<HTMLTableCellElement>(null);
+  const palette = PALETTE[employee];
 
   return (
     <td
@@ -415,11 +630,12 @@ function ScheduleCell({
       {shift ? (
         locked ? (
           <div
-            className="w-full rounded-[10px] px-2.5 py-2 text-left"
+            className="w-full rounded-[10px] px-2.5 py-2 text-left mm-shift-locked"
             style={{
               background: "var(--canvas-elevated)",
               color: "var(--ink-muted-60)",
               border: "1px solid var(--hairline)",
+              borderLeft: `3px solid ${palette.hue}`,
             }}
             title="Past shift · locked"
           >
@@ -433,19 +649,26 @@ function ScheduleCell({
         ) : (
           <button
             onClick={onOpen}
-            className="w-full rounded-[10px] px-2.5 py-2 text-left transition-all hover:scale-[1.02]"
+            className="mm-shift relative w-full rounded-[10px] px-2.5 py-2 text-left overflow-hidden"
             style={{
-              background:
-                "linear-gradient(135deg, var(--primary) 0%, var(--primary-focus) 100%)",
+              background: palette.bg,
               color: "white",
-              boxShadow:
-                "0 1px 2px rgba(0, 113, 227, 0.18), 0 4px 12px rgba(0, 113, 227, 0.18)",
+              boxShadow: `0 1px 2px ${palette.ring}, 0 4px 14px ${palette.ring}`,
             }}
           >
-            <div className="text-[12px] font-semibold tabular-nums">
+            {/* sheen on hover */}
+            <span
+              aria-hidden="true"
+              className="mm-shift-sheen absolute inset-0 pointer-events-none"
+              style={{
+                background:
+                  "linear-gradient(120deg, transparent 30%, rgba(255,255,255,0.18) 50%, transparent 70%)",
+              }}
+            />
+            <div className="relative text-[12px] font-semibold tabular-nums">
               {formatTime12h(shift.startTime)}
             </div>
-            <div className="text-[10px] tabular-nums opacity-80">
+            <div className="relative text-[10px] tabular-nums opacity-85">
               → {formatTime12h(endOfShift(shift.startTime))}
             </div>
           </button>
@@ -460,10 +683,20 @@ function ScheduleCell({
       ) : (
         <button
           onClick={onOpen}
-          className="w-full h-[44px] rounded-[10px] text-[12px] transition-colors flex items-center justify-center"
+          className="mm-empty group w-full h-[44px] rounded-[10px] text-[14px] transition-all flex items-center justify-center"
           style={{
-            border: "1px dashed var(--hairline)",
+            border: "1px dashed var(--hairline-strong)",
             color: "var(--ink-muted-48)",
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.borderColor = palette.hue;
+            e.currentTarget.style.background = palette.soft;
+            e.currentTarget.style.color = palette.hue;
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.borderColor = "var(--hairline-strong)";
+            e.currentTarget.style.background = "transparent";
+            e.currentTarget.style.color = "var(--ink-muted-48)";
           }}
         >
           +
@@ -638,6 +871,31 @@ function ShiftPicker({
       </div>
     </>,
     document.body,
+  );
+}
+
+function Avatar({
+  employee,
+  size = 28,
+}: {
+  employee: Employee;
+  size?: number;
+}) {
+  const palette = PALETTE[employee];
+  return (
+    <div
+      className="grid place-items-center rounded-full text-white shrink-0 font-semibold tracking-[-0.01em]"
+      style={{
+        width: size,
+        height: size,
+        fontSize: size * 0.4,
+        background: palette.bg,
+        boxShadow: `0 0 0 2px ${palette.soft}, 0 1px 2px ${palette.ring}`,
+      }}
+      aria-hidden="true"
+    >
+      {initialsOf(employee)}
+    </div>
   );
 }
 
