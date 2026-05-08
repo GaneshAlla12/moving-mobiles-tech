@@ -42,5 +42,7 @@ export const config = {
     "/repair-cost/:path*",
     "/staff/shop",
     "/staff/shop/:path*",
+    "/staff/schedule",
+    "/staff/schedule/:path*",
   ],
 };
