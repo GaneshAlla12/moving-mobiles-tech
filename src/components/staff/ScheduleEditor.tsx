@@ -335,12 +335,17 @@ export default function ScheduleEditor({ weekStart, initialShifts }: Props) {
                   >
                     {employee}
                   </td>
-                  {weekDates.map((date) => {
+                  {weekDates.map((date, dayIdx) => {
                     const shift = shiftMap.get(`${employee}|${date}`);
                     const isToday = date === today;
                     const locked = isLocked(date);
                     const isOpen =
                       editing?.employee === employee && editing?.date === date;
+                    // Pop direction: last 2 columns anchor to right, first
+                    // 2 columns anchor to left, middle stays centered. Keeps
+                    // the picker on-screen at any cell position.
+                    const align: "left" | "center" | "right" =
+                      dayIdx >= 5 ? "right" : dayIdx <= 1 ? "left" : "center";
                     return (
                       <td
                         key={date}
@@ -417,6 +422,7 @@ export default function ScheduleEditor({ weekStart, initialShifts }: Props) {
                         {isOpen && !locked && (
                           <ShiftPicker
                             currentStart={shift?.startTime}
+                            align={align}
                             onPick={(t) => setShift(employee, date, t)}
                             onRemove={
                               shift
@@ -448,16 +454,25 @@ export default function ScheduleEditor({ weekStart, initialShifts }: Props) {
 
 function ShiftPicker({
   currentStart,
+  align = "center",
   onPick,
   onRemove,
   onClose,
 }: {
   currentStart?: string;
+  /** Anchor edge of the popover relative to its parent cell. */
+  align?: "left" | "center" | "right";
   onPick: (start: string) => void;
   onRemove?: () => void;
   onClose: () => void;
 }) {
   const [custom, setCustom] = useState(currentStart ?? "");
+  const positionClass =
+    align === "right"
+      ? "right-0"
+      : align === "left"
+        ? "left-0"
+        : "left-1/2 -translate-x-1/2";
 
   return (
     <>
@@ -468,7 +483,7 @@ function ShiftPicker({
         aria-hidden="true"
       />
       <div
-        className="absolute z-50 top-full left-1/2 -translate-x-1/2 mt-1 w-56 rounded-[14px] p-3 space-y-2"
+        className={`absolute z-50 top-full ${positionClass} mt-1 w-56 rounded-[14px] p-3 space-y-2`}
         style={{
           background: "var(--canvas)",
           border: "1px solid var(--hairline-strong)",
