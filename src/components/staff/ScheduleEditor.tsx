@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   EMPLOYEES,
   type Shift,
@@ -335,104 +336,26 @@ export default function ScheduleEditor({ weekStart, initialShifts }: Props) {
                   >
                     {employee}
                   </td>
-                  {weekDates.map((date, dayIdx) => {
+                  {weekDates.map((date) => {
                     const shift = shiftMap.get(`${employee}|${date}`);
                     const isToday = date === today;
                     const locked = isLocked(date);
                     const isOpen =
                       editing?.employee === employee && editing?.date === date;
-                    // Pop direction: last 2 columns anchor to right, first
-                    // 2 columns anchor to left, middle stays centered. Keeps
-                    // the picker on-screen at any cell position.
-                    const align: "left" | "center" | "right" =
-                      dayIdx >= 5 ? "right" : dayIdx <= 1 ? "left" : "center";
                     return (
-                      <td
+                      <ScheduleCell
                         key={date}
-                        className={`relative px-2 py-2 align-middle ${isLast ? "" : "border-b border-[var(--hairline)]"}`}
-                        style={{
-                          background: isToday
-                            ? "var(--primary-soft)"
-                            : locked
-                              ? "var(--canvas-sunken)"
-                              : "transparent",
-                        }}
-                      >
-                        {shift ? (
-                          locked ? (
-                            // Read-only completed shift
-                            <div
-                              className="w-full rounded-[10px] px-2.5 py-2 text-left"
-                              style={{
-                                background: "var(--canvas-elevated)",
-                                color: "var(--ink-muted-60)",
-                                border: "1px solid var(--hairline)",
-                              }}
-                              title="Past shift · locked"
-                            >
-                              <div className="text-[12px] font-semibold tabular-nums">
-                                {formatTime12h(shift.startTime)}
-                              </div>
-                              <div className="text-[10px] tabular-nums text-[var(--ink-muted-48)]">
-                                → {formatTime12h(endOfShift(shift.startTime))}
-                              </div>
-                            </div>
-                          ) : (
-                            <button
-                              onClick={() => setEditing({ employee, date })}
-                              className="w-full rounded-[10px] px-2.5 py-2 text-left transition-all hover:scale-[1.02]"
-                              style={{
-                                background:
-                                  "linear-gradient(135deg, var(--primary) 0%, var(--primary-focus) 100%)",
-                                color: "white",
-                                boxShadow:
-                                  "0 1px 2px rgba(0, 113, 227, 0.18), 0 4px 12px rgba(0, 113, 227, 0.18)",
-                              }}
-                            >
-                              <div className="text-[12px] font-semibold tabular-nums">
-                                {formatTime12h(shift.startTime)}
-                              </div>
-                              <div className="text-[10px] tabular-nums opacity-80">
-                                → {formatTime12h(endOfShift(shift.startTime))}
-                              </div>
-                            </button>
-                          )
-                        ) : locked ? (
-                          // Empty past cell — neutral, no add button
-                          <div
-                            className="w-full h-[44px] flex items-center justify-center text-[var(--ink-muted-32)]"
-                            aria-label="Past day, no shift"
-                          >
-                            —
-                          </div>
-                        ) : (
-                          <button
-                            onClick={() => setEditing({ employee, date })}
-                            className="w-full h-[44px] rounded-[10px] text-[12px] transition-colors flex items-center justify-center"
-                            style={{
-                              border: "1px dashed var(--hairline)",
-                              color: "var(--ink-muted-48)",
-                            }}
-                          >
-                            +
-                          </button>
-                        )}
-
-                        {/* Inline picker — only opens for editable cells */}
-                        {isOpen && !locked && (
-                          <ShiftPicker
-                            currentStart={shift?.startTime}
-                            align={align}
-                            onPick={(t) => setShift(employee, date, t)}
-                            onRemove={
-                              shift
-                                ? () => removeShift(employee, date)
-                                : undefined
-                            }
-                            onClose={() => setEditing(null)}
-                          />
-                        )}
-                      </td>
+                        date={date}
+                        shift={shift}
+                        isToday={isToday}
+                        locked={locked}
+                        isOpen={isOpen}
+                        isLastRow={isLast}
+                        onOpen={() => setEditing({ employee, date })}
+                        onPick={(t) => setShift(employee, date, t)}
+                        onRemove={() => removeShift(employee, date)}
+                        onClose={() => setEditing(null)}
+                      />
                     );
                   })}
                 </tr>
@@ -452,39 +375,200 @@ export default function ScheduleEditor({ weekStart, initialShifts }: Props) {
   );
 }
 
-function ShiftPicker({
-  currentStart,
-  align = "center",
+function ScheduleCell({
+  date,
+  shift,
+  isToday,
+  locked,
+  isOpen,
+  isLastRow,
+  onOpen,
   onPick,
   onRemove,
   onClose,
 }: {
+  date: string;
+  shift?: Shift;
+  isToday: boolean;
+  locked: boolean;
+  isOpen: boolean;
+  isLastRow: boolean;
+  onOpen: () => void;
+  onPick: (start: string) => void;
+  onRemove: () => void;
+  onClose: () => void;
+}) {
+  const cellRef = useRef<HTMLTableCellElement>(null);
+
+  return (
+    <td
+      ref={cellRef}
+      className={`relative px-2 py-2 align-middle ${isLastRow ? "" : "border-b border-[var(--hairline)]"}`}
+      style={{
+        background: isToday
+          ? "var(--primary-soft)"
+          : locked
+            ? "var(--canvas-sunken)"
+            : "transparent",
+      }}
+    >
+      {shift ? (
+        locked ? (
+          <div
+            className="w-full rounded-[10px] px-2.5 py-2 text-left"
+            style={{
+              background: "var(--canvas-elevated)",
+              color: "var(--ink-muted-60)",
+              border: "1px solid var(--hairline)",
+            }}
+            title="Past shift · locked"
+          >
+            <div className="text-[12px] font-semibold tabular-nums">
+              {formatTime12h(shift.startTime)}
+            </div>
+            <div className="text-[10px] tabular-nums text-[var(--ink-muted-48)]">
+              → {formatTime12h(endOfShift(shift.startTime))}
+            </div>
+          </div>
+        ) : (
+          <button
+            onClick={onOpen}
+            className="w-full rounded-[10px] px-2.5 py-2 text-left transition-all hover:scale-[1.02]"
+            style={{
+              background:
+                "linear-gradient(135deg, var(--primary) 0%, var(--primary-focus) 100%)",
+              color: "white",
+              boxShadow:
+                "0 1px 2px rgba(0, 113, 227, 0.18), 0 4px 12px rgba(0, 113, 227, 0.18)",
+            }}
+          >
+            <div className="text-[12px] font-semibold tabular-nums">
+              {formatTime12h(shift.startTime)}
+            </div>
+            <div className="text-[10px] tabular-nums opacity-80">
+              → {formatTime12h(endOfShift(shift.startTime))}
+            </div>
+          </button>
+        )
+      ) : locked ? (
+        <div
+          className="w-full h-[44px] flex items-center justify-center text-[var(--ink-muted-32)]"
+          aria-label="Past day, no shift"
+        >
+          —
+        </div>
+      ) : (
+        <button
+          onClick={onOpen}
+          className="w-full h-[44px] rounded-[10px] text-[12px] transition-colors flex items-center justify-center"
+          style={{
+            border: "1px dashed var(--hairline)",
+            color: "var(--ink-muted-48)",
+          }}
+        >
+          +
+        </button>
+      )}
+
+      {isOpen && !locked && (
+        <ShiftPicker
+          anchorRef={cellRef}
+          currentStart={shift?.startTime}
+          dateLabel={date}
+          onPick={onPick}
+          onRemove={shift ? onRemove : undefined}
+          onClose={onClose}
+        />
+      )}
+    </td>
+  );
+}
+
+function ShiftPicker({
+  anchorRef,
+  currentStart,
+  dateLabel,
+  onPick,
+  onRemove,
+  onClose,
+}: {
+  anchorRef: React.RefObject<HTMLElement | null>;
   currentStart?: string;
-  /** Anchor edge of the popover relative to its parent cell. */
-  align?: "left" | "center" | "right";
+  dateLabel?: string;
   onPick: (start: string) => void;
   onRemove?: () => void;
   onClose: () => void;
 }) {
   const [custom, setCustom] = useState(currentStart ?? "");
-  const positionClass =
-    align === "right"
-      ? "right-0"
-      : align === "left"
-        ? "left-0"
-        : "left-1/2 -translate-x-1/2";
+  const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
+  const popRef = useRef<HTMLDivElement>(null);
+  const POP_W = 224;
 
-  return (
+  // Compute position: center horizontally on the anchor cell, prefer below
+  // but flip above if there's not enough room. Clamp to viewport edges.
+  useEffect(() => {
+    const compute = () => {
+      const a = anchorRef.current;
+      if (!a) return;
+      const r = a.getBoundingClientRect();
+      const popH = popRef.current?.offsetHeight ?? 200;
+      const margin = 8;
+      const vpH = window.innerHeight;
+      const vpW = window.innerWidth;
+
+      // Vertical: open below if room, otherwise above
+      let top = r.bottom + 4;
+      if (top + popH + margin > vpH) {
+        top = Math.max(margin, r.top - popH - 4);
+      }
+
+      // Horizontal: center on cell, clamp to viewport
+      const cellCenter = r.left + r.width / 2;
+      let left = cellCenter - POP_W / 2;
+      if (left < margin) left = margin;
+      if (left + POP_W + margin > vpW) left = vpW - POP_W - margin;
+
+      setPos({ top, left });
+    };
+    compute();
+    // Recompute on scroll/resize so the popover tracks the cell
+    window.addEventListener("scroll", compute, true);
+    window.addEventListener("resize", compute);
+    return () => {
+      window.removeEventListener("scroll", compute, true);
+      window.removeEventListener("resize", compute);
+    };
+  }, [anchorRef]);
+
+  // Close on Escape
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  if (typeof document === "undefined") return null;
+
+  return createPortal(
     <>
-      {/* Backdrop to close */}
+      {/* Backdrop closes the popover */}
       <div
-        className="fixed inset-0 z-40"
+        className="fixed inset-0 z-[100]"
         onClick={onClose}
         aria-hidden="true"
       />
       <div
-        className={`absolute z-50 top-full ${positionClass} mt-1 w-56 rounded-[14px] p-3 space-y-2`}
+        ref={popRef}
+        role="dialog"
+        aria-label={dateLabel ? `Edit shift for ${dateLabel}` : "Edit shift"}
+        className="fixed z-[101] rounded-[14px] p-3 space-y-2"
         style={{
+          width: POP_W,
+          top: pos?.top ?? -9999,
+          left: pos?.left ?? -9999,
+          visibility: pos ? "visible" : "hidden",
           background: "var(--canvas)",
           border: "1px solid var(--hairline-strong)",
           boxShadow: "var(--shadow-3)",
@@ -552,7 +636,8 @@ function ShiftPicker({
           </button>
         )}
       </div>
-    </>
+    </>,
+    document.body,
   );
 }
 
