@@ -65,6 +65,10 @@ export default function ScheduleEditor({ weekStart, initialShifts }: Props) {
   const totalShifts = shifts.length;
   const totalHours = totalShifts * 5;
 
+  // Locked = strictly before today (past days are read-only)
+  const todayYmd = useMemo(() => formatYmd(new Date()), []);
+  const isLocked = (date: string) => date < todayYmd;
+
   const onSave = async () => {
     setStatus({ kind: "saving" });
     try {
@@ -101,7 +105,8 @@ export default function ScheduleEditor({ weekStart, initialShifts }: Props) {
     return `${fmt(start, { month: "short", day: "numeric" })} – ${fmt(end, { month: "short", day: "numeric" })}, ${start.getFullYear()}`;
   }, [weekStart]);
 
-  const today = formatYmd(new Date());
+  const today = todayYmd;
+  const allLocked = weekDates.every((d) => isLocked(d));
 
   return (
     <div className="space-y-5">
@@ -186,14 +191,34 @@ export default function ScheduleEditor({ weekStart, initialShifts }: Props) {
           >
             {totalShifts} shifts · {totalHours}h
           </span>
-          <StatusBadge status={status} />
-          <button
-            onClick={onSave}
-            disabled={status.kind === "saving"}
-            className={`btn-primary px-5 py-2 text-[13px] ${status.kind === "saving" ? "opacity-50 cursor-not-allowed" : ""}`}
-          >
-            {status.kind === "saving" ? "Saving…" : "Save week"}
-          </button>
+          {allLocked ? (
+            <span
+              className="inline-flex items-center gap-1.5 text-[12px] font-medium px-3 py-1.5 rounded-full"
+              style={{
+                background: "var(--canvas-elevated)",
+                color: "var(--ink-muted-60)",
+                border: "1px solid var(--hairline)",
+              }}
+              title="This week is in the past — read only"
+            >
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+              </svg>
+              Past week · locked
+            </span>
+          ) : (
+            <>
+              <StatusBadge status={status} />
+              <button
+                onClick={onSave}
+                disabled={status.kind === "saving"}
+                className={`btn-primary px-5 py-2 text-[13px] ${status.kind === "saving" ? "opacity-50 cursor-not-allowed" : ""}`}
+              >
+                {status.kind === "saving" ? "Saving…" : "Save week"}
+              </button>
+            </>
+          )}
         </div>
       </div>
 
@@ -248,6 +273,7 @@ export default function ScheduleEditor({ weekStart, initialShifts }: Props) {
                   {weekDates.map((date) => {
                     const shift = shiftMap.get(`${employee}|${date}`);
                     const isToday = date === today;
+                    const locked = isLocked(date);
                     const isOpen =
                       editing?.employee === employee && editing?.date === date;
                     return (
@@ -257,28 +283,58 @@ export default function ScheduleEditor({ weekStart, initialShifts }: Props) {
                         style={{
                           background: isToday
                             ? "var(--primary-soft)"
-                            : "transparent",
+                            : locked
+                              ? "var(--canvas-sunken)"
+                              : "transparent",
                         }}
                       >
                         {shift ? (
-                          <button
-                            onClick={() => setEditing({ employee, date })}
-                            className="w-full rounded-[10px] px-2.5 py-2 text-left transition-all hover:scale-[1.02]"
-                            style={{
-                              background:
-                                "linear-gradient(135deg, var(--primary) 0%, var(--primary-focus) 100%)",
-                              color: "white",
-                              boxShadow:
-                                "0 1px 2px rgba(0, 113, 227, 0.18), 0 4px 12px rgba(0, 113, 227, 0.18)",
-                            }}
+                          locked ? (
+                            // Read-only completed shift
+                            <div
+                              className="w-full rounded-[10px] px-2.5 py-2 text-left"
+                              style={{
+                                background: "var(--canvas-elevated)",
+                                color: "var(--ink-muted-60)",
+                                border: "1px solid var(--hairline)",
+                              }}
+                              title="Past shift · locked"
+                            >
+                              <div className="text-[12px] font-semibold tabular-nums">
+                                {formatTime12h(shift.startTime)}
+                              </div>
+                              <div className="text-[10px] tabular-nums text-[var(--ink-muted-48)]">
+                                → {formatTime12h(endOfShift(shift.startTime))}
+                              </div>
+                            </div>
+                          ) : (
+                            <button
+                              onClick={() => setEditing({ employee, date })}
+                              className="w-full rounded-[10px] px-2.5 py-2 text-left transition-all hover:scale-[1.02]"
+                              style={{
+                                background:
+                                  "linear-gradient(135deg, var(--primary) 0%, var(--primary-focus) 100%)",
+                                color: "white",
+                                boxShadow:
+                                  "0 1px 2px rgba(0, 113, 227, 0.18), 0 4px 12px rgba(0, 113, 227, 0.18)",
+                              }}
+                            >
+                              <div className="text-[12px] font-semibold tabular-nums">
+                                {formatTime12h(shift.startTime)}
+                              </div>
+                              <div className="text-[10px] tabular-nums opacity-80">
+                                → {formatTime12h(endOfShift(shift.startTime))}
+                              </div>
+                            </button>
+                          )
+                        ) : locked ? (
+                          // Empty past cell — neutral, no add button
+                          <div
+                            className="w-full h-[44px] flex items-center justify-center text-[var(--ink-muted-32)]"
+                            aria-label="Past day, no shift"
                           >
-                            <div className="text-[12px] font-semibold tabular-nums">
-                              {formatTime12h(shift.startTime)}
-                            </div>
-                            <div className="text-[10px] tabular-nums opacity-80">
-                              → {formatTime12h(endOfShift(shift.startTime))}
-                            </div>
-                          </button>
+                            —
+                          </div>
                         ) : (
                           <button
                             onClick={() => setEditing({ employee, date })}
@@ -292,8 +348,8 @@ export default function ScheduleEditor({ weekStart, initialShifts }: Props) {
                           </button>
                         )}
 
-                        {/* Inline picker */}
-                        {isOpen && (
+                        {/* Inline picker — only opens for editable cells */}
+                        {isOpen && !locked && (
                           <ShiftPicker
                             currentStart={shift?.startTime}
                             onPick={(t) => setShift(employee, date, t)}
