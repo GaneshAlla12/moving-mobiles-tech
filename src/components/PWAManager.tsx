@@ -87,11 +87,16 @@ export default function PWAManager() {
   // Don't show on customer pages, when already installed, or when dismissed
   if (!isStaffRoute || isStandalone || dismissed) return null;
 
-  // Only show on the identify page so it doesn't nag mid-task
+  // Only show on identify or login so it doesn't nag mid-task
   if (pathname !== "/staff/identify" && pathname !== "/staff") return null;
 
-  // Nothing to prompt — neither Android-style install nor iOS hint
-  if (!installEvent && !showIosHint) return null;
+  // Detect Android-ish browser (PWA-installable). If neither beforeinstallprompt
+  // nor iOS hint applies, still show the card — just with manual instructions —
+  // because Chrome's auto-prompt is unreliable on first visit.
+  const isAndroidish =
+    typeof navigator !== "undefined" &&
+    /android/i.test(navigator.userAgent) &&
+    !showIosHint;
 
   const dismiss = () => {
     setDismissed(true);
@@ -141,10 +146,19 @@ export default function PWAManager() {
           <p className="mt-0.5 text-[12px] text-[var(--ink-muted-60)] leading-[1.45]">
             One-tap clock-in from your home screen. Works offline.
           </p>
+        ) : showIosHint ? (
+          <p className="mt-0.5 text-[12px] text-[var(--ink-muted-60)] leading-[1.45]">
+            Tap the <strong>Share</strong> button at the bottom of Safari, then{" "}
+            <strong>Add to Home Screen</strong>.
+          </p>
+        ) : isAndroidish ? (
+          <p className="mt-0.5 text-[12px] text-[var(--ink-muted-60)] leading-[1.45]">
+            Open Chrome&apos;s <strong>⋮ menu</strong> and tap{" "}
+            <strong>Install app</strong>.
+          </p>
         ) : (
           <p className="mt-0.5 text-[12px] text-[var(--ink-muted-60)] leading-[1.45]">
-            Tap the <strong>Share</strong> button below, then{" "}
-            <strong>Add to Home Screen</strong>.
+            Click the install icon in your browser&apos;s address bar.
           </p>
         )}
         <div className="mt-3 flex items-center gap-2">

@@ -98,6 +98,112 @@ export default function Header({ isStaff = false, staffName = null }: Props) {
     window.location.href = "/staff";
   };
 
+  // Staff routes get a stripped-down header — no customer nav, no Cart,
+  // no Book button. Just enough chrome to identify, theme-toggle, and
+  // clock out. This is the "app" experience.
+  if (isStaffRoute) {
+    return (
+      <header
+        className="sticky top-0 z-40 border-b border-[var(--hairline)]"
+        style={{ background: "var(--canvas)" }}
+      >
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 sm:px-6 py-3">
+          <Link
+            href="/staff/identify"
+            className="flex items-center gap-2.5 group"
+          >
+            <Logo size={32} />
+            <div className="leading-tight">
+              <div className="text-[13px] font-semibold tracking-[-0.01em]">
+                MM Staff
+              </div>
+              <div className="text-[9px] uppercase tracking-[0.18em] text-[var(--ink-muted-60)]">
+                Portal
+              </div>
+            </div>
+          </Link>
+
+          <div className="flex items-center gap-2">
+            <ThemeToggle />
+            {isStaff && staffName && (
+              <span
+                className="inline-flex items-center gap-1.5 rounded-full pl-1 pr-3 py-1 text-[12px] font-semibold tabular-nums"
+                style={{
+                  background: "var(--canvas-elevated)",
+                  border: "1px solid var(--hairline)",
+                  color: "var(--ink)",
+                }}
+                title={`Signed in as ${staffName}`}
+              >
+                <span
+                  className="grid place-items-center rounded-full text-white font-semibold"
+                  style={{
+                    width: 22,
+                    height: 22,
+                    fontSize: 10,
+                    background: EMPLOYEE_HUE[staffName]
+                      ? `linear-gradient(135deg, ${EMPLOYEE_HUE[staffName]} 0%, ${EMPLOYEE_HUE[staffName]}cc 100%)`
+                      : "var(--ink)",
+                  }}
+                  aria-hidden="true"
+                >
+                  {initialsOf(staffName)}
+                </span>
+                <span className="hidden xs:inline">{staffName}</span>
+              </span>
+            )}
+            {isStaff && (
+              <button
+                onClick={onSignOut}
+                disabled={signingOut}
+                className="inline-flex rounded-full border border-[var(--hairline-strong)] px-3 py-1.5 text-[12px] font-medium text-[var(--ink-muted-80)] hover:border-[var(--ink-muted-32)] hover:text-[var(--ink)] transition-colors"
+                title={
+                  staffName
+                    ? `Sign out of ${staffName} (clocks you out)`
+                    : "Sign out of staff mode"
+                }
+              >
+                {signingOut
+                  ? "Signing out…"
+                  : staffName
+                    ? "Clock out"
+                    : "Sign out"}
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Quick-jump tab strip — only for signed-in staff with identity */}
+        {isStaff && staffName && (
+          <div className="border-t border-[var(--hairline)] overflow-x-auto">
+            <nav className="mx-auto flex max-w-6xl gap-1 px-4 sm:px-6 py-2 text-[12px] font-medium whitespace-nowrap">
+              {STAFF_NAV_EXTRA.map((l) => {
+                const active = pathname === l.href;
+                return (
+                  <Link
+                    key={l.href}
+                    href={l.href}
+                    className="rounded-full px-3 py-1.5 transition-colors"
+                    style={{
+                      background: active
+                        ? "var(--ink)"
+                        : "transparent",
+                      color: active
+                        ? "var(--on-dark)"
+                        : "var(--ink-muted-60)",
+                    }}
+                  >
+                    {l.label}
+                  </Link>
+                );
+              })}
+            </nav>
+          </div>
+        )}
+      </header>
+    );
+  }
+
   return (
     <>
       <header
