@@ -47,6 +47,16 @@ const nextConfig: NextConfig = {
         source: "/:path*",
         headers: securityHeaders,
       },
+      {
+        // Allow the service worker (served from /sw.js) to claim scope
+        // beyond its own path so it can intercept all /staff/* requests.
+        source: "/sw.js",
+        headers: [
+          { key: "Service-Worker-Allowed", value: "/" },
+          { key: "Cache-Control", value: "public, max-age=0, must-revalidate" },
+          { key: "Content-Type", value: "application/javascript" },
+        ],
+      },
     ];
   },
 };

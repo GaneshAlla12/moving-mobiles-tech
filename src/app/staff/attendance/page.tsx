@@ -6,6 +6,7 @@ import {
   todayInShopTz,
 } from "@/lib/attendance";
 import AttendanceView from "@/components/staff/AttendanceView";
+import PushToggle from "@/components/staff/PushToggle";
 
 export const metadata: Metadata = {
   title: "Staff attendance",
@@ -61,7 +62,8 @@ export default async function StaffAttendancePage({
         </div>
       </header>
 
-      <div className="mx-auto max-w-6xl px-5 sm:px-8 py-10">
+      <div className="mx-auto max-w-6xl px-5 sm:px-8 py-10 space-y-6">
+        <PushToggle />
         <AttendanceView
           date={date}
           today={today}

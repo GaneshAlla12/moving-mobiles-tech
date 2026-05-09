@@ -6,6 +6,7 @@ import {
 } from "@/lib/booking";
 import { clientIpFrom, rateLimit } from "@/lib/rate-limit";
 import { createBooking, isCalConfigured } from "@/lib/cal-com";
+import { sendPushToAll } from "@/lib/push";
 
 /**
  * Booking submission endpoint.
@@ -146,6 +147,15 @@ export async function POST(req: Request) {
     console.log(
       `[book] Cal.com booking created uid=${result.uid} ref=${reference} ${device} ${payload.date} ${payload.time}`,
     );
+
+    // Fire-and-forget push to staff devices. Don't block the response.
+    sendPushToAll({
+      title: "New booking",
+      body: `${c.name.trim()} · ${device} · ${payload.date} ${payload.time}`,
+      url: "/staff/appointments",
+      tag: `booking-${reference}`,
+    }).catch((e) => console.error("[book] push failed:", e));
+
     return NextResponse.json({ reference, uid: result.uid });
   }
 
