@@ -27,6 +27,7 @@ const PIN_ENV: Record<Employee, string> = {
   Niteesh: "STAFF_PIN_NITEESH",
   Bharath: "STAFF_PIN_BHARATH",
   Trainee: "STAFF_PIN_TRAINEE",
+  Liv: "STAFF_PIN_LIV",
 };
 
 export async function POST(req: Request) {

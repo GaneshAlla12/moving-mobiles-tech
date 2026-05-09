@@ -30,6 +30,11 @@ const PALETTE: Record<Employee, { hue: string; bg: string; soft: string }> = {
     bg: "linear-gradient(135deg, #f59e0b 0%, #d97706 100%)",
     soft: "rgba(245, 158, 11, 0.10)",
   },
+  Liv: {
+    hue: "#ec4899",
+    bg: "linear-gradient(135deg, #ec4899 0%, #be185d 100%)",
+    soft: "rgba(236, 72, 153, 0.10)",
+  },
 };
 
 const initialsOf = (name: string) =>

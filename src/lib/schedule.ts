@@ -7,7 +7,7 @@ import { Redis } from "@upstash/redis";
  * compute the end on display so we never have inconsistent ranges.
  */
 
-export const EMPLOYEES = ["Satya", "Niteesh", "Bharath", "Trainee"] as const;
+export const EMPLOYEES = ["Satya", "Niteesh", "Bharath", "Trainee", "Liv"] as const;
 export type Employee = (typeof EMPLOYEES)[number];
 
 export const SHIFT_HOURS = 5;

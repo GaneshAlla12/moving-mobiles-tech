@@ -20,6 +20,7 @@ const EMPLOYEE_HUE: Record<string, string> = {
   Niteesh: "#8b5cf6",
   Bharath: "#10b981",
   Trainee: "#f59e0b",
+  Liv: "#ec4899",
 };
 
 const initialsOf = (name: string) =>

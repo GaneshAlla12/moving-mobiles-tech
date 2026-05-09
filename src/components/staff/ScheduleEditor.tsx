@@ -55,6 +55,12 @@ const PALETTE: Record<
     ring: "rgba(245, 158, 11, 0.35)",
     soft: "rgba(245, 158, 11, 0.10)",
   },
+  Liv: {
+    hue: "#ec4899",
+    bg: "linear-gradient(135deg, #ec4899 0%, #be185d 100%)",
+    ring: "rgba(236, 72, 153, 0.35)",
+    soft: "rgba(236, 72, 153, 0.10)",
+  },
 };
 
 const initialsOf = (name: string) =>
