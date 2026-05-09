@@ -91,7 +91,10 @@ export default function Header({ isStaff = false, staffName = null }: Props) {
     try {
       await fetch("/api/staff/logout", { method: "POST" });
     } catch {}
-    window.location.href = "/";
+    // After clock-out, return to the staff sign-in page so the next
+    // person can sign in directly. Customer-side users never see a
+    // sign-out button, so this is always a staff context.
+    window.location.href = "/staff";
   };
 
   return (
