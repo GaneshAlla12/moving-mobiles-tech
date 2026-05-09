@@ -61,10 +61,7 @@ export default function IdentifyPicker({ next }: { next?: string }) {
             onBack={() => setSelected(null)}
           />
         ) : (
-          <NamePicker
-            target={target}
-            onPick={(e) => setSelected(e)}
-          />
+          <NamePicker onPick={(e) => setSelected(e)} />
         )}
       </div>
     </section>
@@ -73,32 +70,10 @@ export default function IdentifyPicker({ next }: { next?: string }) {
 
 function NamePicker({
   onPick,
-  target,
 }: {
   onPick: (e: Employee) => void;
-  target: string;
 }) {
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const pickViewer = async () => {
-    if (busy) return;
-    setBusy(true);
-    setError(null);
-    try {
-      const res = await fetch("/api/staff/identify", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ employee: "__viewer" }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data?.error ?? "Sign-in failed");
-      window.location.href = target;
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Sign-in failed");
-      setBusy(false);
-    }
-  };
+  const [error] = useState<string | null>(null);
 
   return (
     <>
@@ -202,16 +177,6 @@ function NamePicker({
         })}
       </div>
 
-      <div className="mt-6 text-center">
-        <button
-          onClick={pickViewer}
-          disabled={busy}
-          className="text-[13px] text-[var(--ink-muted-60)] hover:text-[var(--ink)] transition-colors"
-        >
-          Manager view-only
-          <span className="text-[var(--ink-muted-32)]"> · skip clock-in</span>
-        </button>
-      </div>
     </>
   );
 }
