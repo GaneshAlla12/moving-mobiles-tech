@@ -199,8 +199,13 @@ export async function listBookings(opts: {
   /** ISO UTC, e.g. "2026-05-01T00:00:00.000Z" */
   afterStart?: string;
   beforeStart?: string;
-  /** "accepted" | "cancelled" | "rejected" — Cal.com supports multiple */
-  status?: string[];
+  /**
+   * Cal.com v2 accepts: "upcoming" | "past" | "cancelled" | "unconfirmed" | "recurring".
+   * Pass an array of those literal values.
+   */
+  status?: Array<
+    "upcoming" | "past" | "cancelled" | "unconfirmed" | "recurring"
+  >;
   take?: number;
 }): Promise<CalBooking[] | null> {
   const cfg = config();

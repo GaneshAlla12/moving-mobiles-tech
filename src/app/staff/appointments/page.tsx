@@ -32,13 +32,13 @@ export default async function StaffAppointmentsPage({
           ? {
               afterStart: now.toISOString(),
               beforeStart: horizon.toISOString(),
-              status: ["accepted", "pending"],
+              status: ["upcoming"],
               take: 100,
             }
           : {
               afterStart: past.toISOString(),
               beforeStart: now.toISOString(),
-              status: ["accepted", "cancelled", "no-show"],
+              status: ["past", "cancelled"],
               take: 100,
             },
       )
