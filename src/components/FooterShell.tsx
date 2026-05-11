@@ -10,7 +10,11 @@ import Footer from "./Footer";
  */
 export default function FooterShell() {
   const pathname = usePathname() ?? "/";
-  if (pathname.startsWith("/staff") || pathname.startsWith("/repair-cost")) {
+  if (
+    pathname === "/staff" ||
+    pathname.startsWith("/staff/") ||
+    pathname.startsWith("/repair-cost")
+  ) {
     return null;
   }
   return <Footer />;

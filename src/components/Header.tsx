@@ -76,8 +76,11 @@ export default function Header({ isStaff = false, staffName = null }: Props) {
     };
   }, [staffOpen]);
 
+  // Match /staff (login page) as well as /staff/anything below it.
   const isStaffRoute =
-    pathname?.startsWith("/staff/") || pathname?.startsWith("/repair-cost");
+    pathname === "/staff" ||
+    pathname?.startsWith("/staff/") ||
+    pathname?.startsWith("/repair-cost");
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 8);
