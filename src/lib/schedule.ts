@@ -10,6 +10,17 @@ import { Redis } from "@upstash/redis";
 export const EMPLOYEES = ["Satya", "Niteesh", "Bharath", "Trainee", "Liv"] as const;
 export type Employee = (typeof EMPLOYEES)[number];
 
+/**
+ * Who's allowed to edit the weekly schedule. Everyone else sees it in
+ * read-only mode (and the API rejects PUTs from non-editors).
+ */
+export const SCHEDULE_EDITORS: Employee[] = ["Satya", "Bharath"];
+
+export function canEditSchedule(employee: Employee | null | undefined): boolean {
+  if (!employee) return false;
+  return SCHEDULE_EDITORS.includes(employee);
+}
+
 export const SHIFT_HOURS = 5;
 
 export type Shift = {

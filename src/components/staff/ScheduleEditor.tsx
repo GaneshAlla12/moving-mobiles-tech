@@ -16,6 +16,8 @@ import {
 type Props = {
   weekStart: string; // YYYY-MM-DD (Monday)
   initialShifts: Shift[];
+  /** Only schedule editors (e.g. Satya, Bharath) can mutate; others see read-only. */
+  canEdit?: boolean;
 };
 
 type Status =
@@ -74,7 +76,11 @@ const initialsOf = (name: string) =>
         .toUpperCase() ||
       name.slice(0, 2).toUpperCase();
 
-export default function ScheduleEditor({ weekStart, initialShifts }: Props) {
+export default function ScheduleEditor({
+  weekStart,
+  initialShifts,
+  canEdit = true,
+}: Props) {
   const [shifts, setShifts] = useState<Shift[]>(initialShifts);
   const [editing, setEditing] = useState<{
     employee: Employee;
@@ -166,6 +172,8 @@ export default function ScheduleEditor({ weekStart, initialShifts }: Props) {
 
   const today = todayYmd;
   const allLocked = weekDates.every((d) => isLocked(d));
+  // Non-editors see every day as locked (view-only mode)
+  const readOnly = !canEdit;
 
   return (
     <div className="space-y-5">
@@ -250,7 +258,23 @@ export default function ScheduleEditor({ weekStart, initialShifts }: Props) {
           >
             {totalShifts} shifts · {totalHours}h
           </span>
-          {allLocked ? (
+          {readOnly ? (
+            <span
+              className="inline-flex items-center gap-1.5 text-[12px] font-medium px-3 py-1.5 rounded-full"
+              style={{
+                background: "var(--canvas-elevated)",
+                color: "var(--ink-muted-60)",
+                border: "1px solid var(--hairline)",
+              }}
+              title="Only Satya and Bharath can edit the schedule"
+            >
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+              </svg>
+              View only
+            </span>
+          ) : allLocked ? (
             <span
               className="inline-flex items-center gap-1.5 text-[12px] font-medium px-3 py-1.5 rounded-full"
               style={{
@@ -412,9 +436,12 @@ export default function ScheduleEditor({ weekStart, initialShifts }: Props) {
                   {weekDates.map((date) => {
                     const shift = shiftMap.get(`${employee}|${date}`);
                     const isToday = date === today;
-                    const locked = isLocked(date);
+                    // Non-editors see every day as if it were locked.
+                    const locked = isLocked(date) || readOnly;
                     const isOpen =
-                      editing?.employee === employee && editing?.date === date;
+                      !readOnly &&
+                      editing?.employee === employee &&
+                      editing?.date === date;
                     return (
                       <ScheduleCell
                         key={date}
@@ -545,9 +572,18 @@ export default function ScheduleEditor({ weekStart, initialShifts }: Props) {
 
       {/* Help text */}
       <p className="text-[12px] text-[var(--ink-muted-48)] leading-[1.5]">
-        Tip: shifts are 5 hours. Click a cell to add a shift, click an existing
-        shift to change its start time or remove it. Don&apos;t forget to{" "}
-        <strong>Save week</strong> when you&apos;re done.
+        {readOnly ? (
+          <>
+            Read-only view. Only Satya and Bharath can add, change, or
+            remove shifts. Use the arrows to switch weeks.
+          </>
+        ) : (
+          <>
+            Tip: shifts are 5 hours. Click a cell to add a shift, click an
+            existing shift to change its start time or remove it. Don&apos;t
+            forget to <strong>Save week</strong> when you&apos;re done.
+          </>
+        )}
       </p>
 
       <style>{`

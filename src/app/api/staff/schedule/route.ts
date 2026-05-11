@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
-import { isStaff } from "@/lib/auth";
+import { isStaff, getStaffIdentity } from "@/lib/auth";
 import {
+  canEditSchedule,
   getWeeklySchedule,
   saveWeeklySchedule,
   type Shift,
@@ -32,6 +33,22 @@ export async function GET(req: Request) {
 export async function PUT(req: Request) {
   if (!(await isStaff())) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  // Only certain employees can save the schedule. Others can read it
+  // (GET above) but cannot mutate.
+  const identity = await getStaffIdentity();
+  const editor =
+    identity?.kind === "employee" ? identity.name : null;
+  if (!canEditSchedule(editor)) {
+    return NextResponse.json(
+      {
+        error:
+          "Only Satya and Bharath can edit the schedule. You're signed in as " +
+          (editor ?? "a viewer") +
+          ".",
+      },
+      { status: 403 },
+    );
   }
   let body: { weekStart?: string; shifts?: Shift[] };
   try {
