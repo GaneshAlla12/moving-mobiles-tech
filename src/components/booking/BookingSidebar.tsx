@@ -8,6 +8,7 @@ import {
   deviceTypes,
   formatDateLong,
   formatTime12h,
+  shopHoursDisplay,
 } from "@/lib/booking";
 
 const STEPS = [
@@ -82,6 +83,25 @@ export default function BookingSidebar() {
             done={Boolean(hasContact)}
             current={pathname === "/book/contact"}
           />
+        </ul>
+      </div>
+
+      <div className="mt-8 border-t border-[var(--hairline)] pt-6">
+        <div className="text-[15px] font-semibold tracking-[-0.011em]">
+          Store hours
+        </div>
+        <ul className="mt-4 space-y-2 text-[13px]">
+          {shopHoursDisplay.map((row) => (
+            <li
+              key={row.days}
+              className="flex items-center justify-between gap-3"
+            >
+              <span className="text-[var(--ink-muted-80)]">{row.days}</span>
+              <span className="text-[var(--ink)] tabular-nums">
+                {row.hours}
+              </span>
+            </li>
+          ))}
         </ul>
       </div>
 
