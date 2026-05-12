@@ -7,11 +7,10 @@ import { useBooking } from "./BookingProvider";
 import {
   deviceLabelFor,
   deviceTypes,
-  formatDateLong,
-  formatTime12h,
   getOpenStatus,
   shopHoursDisplay,
 } from "@/lib/booking";
+import { business } from "@/lib/business";
 
 const STEPS = [
   { path: "/book", label: "Device" },
@@ -35,7 +34,6 @@ export default function BookingSidebar() {
 
   // Step icons highlight what's already locked in.
   const hasLocation = true; // always Wilton
-  const hasDateTime = Boolean(state.date && state.time);
   const hasContact =
     state.contact.name.trim() && state.contact.email.trim();
 
@@ -69,22 +67,30 @@ export default function BookingSidebar() {
             label="Wilton, CT"
             done={hasLocation}
           />
-          <SidebarStep
-            icon={<ClockIcon />}
-            label={
-              hasDateTime
-                ? `${formatDateLong(state.date!).split(",")[0]} · ${formatTime12h(state.time!)}`
-                : "Date and time"
-            }
-            done={hasDateTime}
-            current={pathname === "/book/schedule"}
-          />
-          <SidebarStep
-            icon={<ChatIcon />}
-            label={hasContact ? state.contact.name : "Contact details"}
-            done={Boolean(hasContact)}
-            current={pathname === "/book/contact"}
-          />
+          <li
+            className={`flex items-start gap-2.5 ${
+              pathname === "/book/contact"
+                ? "text-[var(--ink)] font-semibold"
+                : hasContact
+                  ? "text-[var(--ink-muted-80)]"
+                  : "text-[var(--ink-muted-48)]"
+            }`}
+          >
+            <span className="grid h-5 w-5 place-items-center text-current shrink-0 mt-px">
+              <ChatIcon />
+            </span>
+            <span className="min-w-0">
+              <span className="block truncate">
+                {hasContact ? state.contact.name : "Contact details"}
+              </span>
+              <a
+                href={`tel:${business.contact.phone}`}
+                className="block mt-0.5 text-[12.5px] font-normal text-[var(--ink-muted-60)] hover:text-[var(--primary)] tabular-nums transition-colors"
+              >
+                {business.contact.phoneDisplay}
+              </a>
+            </span>
+          </li>
         </ul>
       </div>
 
