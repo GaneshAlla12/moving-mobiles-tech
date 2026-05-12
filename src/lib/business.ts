@@ -10,7 +10,7 @@ export const business = {
   contact: {
     phone: "+12035155987",
     phoneDisplay: "(203) 515-5987",
-    email: "movingmobiles5@gmail.com",
+    email: "support@movingmobiles.com",
     address: {
       street: "13 Danbury Rd",
       city: "Wilton",
