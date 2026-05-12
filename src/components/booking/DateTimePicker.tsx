@@ -275,10 +275,6 @@ export default function DateTimePicker({ date, time, onChange }: Props) {
             <span className="grid h-4 w-4 place-items-center rounded-full ring-1 ring-[var(--primary)]/40"></span>
             Today
           </span>
-          <span className="flex items-center gap-1.5">
-            <span className="opacity-40">Sun</span>
-            Closed
-          </span>
         </div>
       </div>
 

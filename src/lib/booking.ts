@@ -281,22 +281,31 @@ export const emptyBookingState: BookingState = {
   contact: { name: "", email: "", phone: "" },
 };
 
-// Shop hours — Mon..Sat open 10:00–19:00, Sun closed.
-// Slot length: 30 minutes. Last bookable slot starts at 18:30.
+// Shop hours — Mon..Sat open 09:00–20:00, Sun open 10:00–17:00.
+// Slot length: 30 minutes. Last bookable slot starts at close - slotMinutes.
 export const shopHours = {
   weeklySchedule: {
-    0: null, // Sunday — closed
-    1: { open: "10:00", close: "19:00" },
-    2: { open: "10:00", close: "19:00" },
-    3: { open: "10:00", close: "19:00" },
-    4: { open: "10:00", close: "19:00" },
-    5: { open: "10:00", close: "19:00" },
-    6: { open: "10:00", close: "19:00" },
+    0: { open: "10:00", close: "17:00" }, // Sunday
+    1: { open: "09:00", close: "20:00" },
+    2: { open: "09:00", close: "20:00" },
+    3: { open: "09:00", close: "20:00" },
+    4: { open: "09:00", close: "20:00" },
+    5: { open: "09:00", close: "20:00" },
+    6: { open: "09:00", close: "20:00" },
   } as Record<number, { open: string; close: string } | null>,
   slotMinutes: 30,
   /** how many days into the future you can book */
   bookingHorizonDays: 30,
 };
+
+/**
+ * Human-readable summary of the shop hours, grouped by contiguous ranges.
+ * Used by the booking page's "Store hours" card.
+ */
+export const shopHoursDisplay: Array<{ days: string; hours: string }> = [
+  { days: "Monday – Saturday", hours: "9:00 AM – 8:00 PM" },
+  { days: "Sunday", hours: "10:00 AM – 5:00 PM" },
+];
 
 export function isOpenOn(date: Date): boolean {
   return shopHours.weeklySchedule[date.getDay()] !== null;
