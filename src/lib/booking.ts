@@ -301,11 +301,121 @@ export const shopHours = {
 /**
  * Human-readable summary of the shop hours, grouped by contiguous ranges.
  * Used by the booking page's "Store hours" card.
+ *
+ * Each group lists the day indices it covers so the UI can highlight
+ * the row that contains "today".
  */
-export const shopHoursDisplay: Array<{ days: string; hours: string }> = [
-  { days: "Monday – Saturday", hours: "9:00 AM – 8:00 PM" },
-  { days: "Sunday", hours: "10:00 AM – 5:00 PM" },
+export const shopHoursDisplay: Array<{
+  days: string;
+  hours: string;
+  dayIndices: number[]; // 0 = Sun, 1 = Mon, … 6 = Sat
+}> = [
+  {
+    days: "Monday – Saturday",
+    hours: "9:00 AM – 8:00 PM",
+    dayIndices: [1, 2, 3, 4, 5, 6],
+  },
+  {
+    days: "Sunday",
+    hours: "10:00 AM – 5:00 PM",
+    dayIndices: [0],
+  },
 ];
+
+/**
+ * Returns a snapshot of whether the shop is open right now, computed in
+ * the shop's timezone (America/New_York). The booking sidebar renders
+ * a live "Open now / Closed" pill from this.
+ */
+export function getOpenStatus(now: Date = new Date()): {
+  isOpen: boolean;
+  /** Short label for the pill, e.g. "Open now" or "Closed". */
+  label: string;
+  /** Secondary line, e.g. "Closes 8:00 PM" or "Opens 9:00 AM". */
+  detail: string;
+  /** Day index 0-6 in shop TZ, so the UI can mark today's row. */
+  todayIndex: number;
+} {
+  const tz = "America/New_York";
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: tz,
+    weekday: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).formatToParts(now);
+  const weekday =
+    parts.find((p) => p.type === "weekday")?.value ?? "Mon";
+  const hour = Number(parts.find((p) => p.type === "hour")?.value ?? "0");
+  const minute = Number(
+    parts.find((p) => p.type === "minute")?.value ?? "0",
+  );
+  const dayIdx =
+    ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].indexOf(weekday) || 0;
+  const today = shopHours.weeklySchedule[dayIdx];
+  const nowMins = hour * 60 + (hour === 24 ? 0 : minute);
+
+  const fmt12 = (hhmm: string) => formatTime12h(hhmm);
+
+  if (!today) {
+    // Closed all day — find next open day
+    for (let i = 1; i <= 7; i++) {
+      const next = shopHours.weeklySchedule[(dayIdx + i) % 7];
+      if (next) {
+        return {
+          isOpen: false,
+          label: "Closed",
+          detail: `Opens ${fmt12(next.open)}${i === 1 ? " tomorrow" : ""}`,
+          todayIndex: dayIdx,
+        };
+      }
+    }
+    return {
+      isOpen: false,
+      label: "Closed",
+      detail: "",
+      todayIndex: dayIdx,
+    };
+  }
+  const [oH, oM] = today.open.split(":").map(Number);
+  const [cH, cM] = today.close.split(":").map(Number);
+  const openMins = oH * 60 + oM;
+  const closeMins = cH * 60 + cM;
+  if (nowMins >= openMins && nowMins < closeMins) {
+    return {
+      isOpen: true,
+      label: "Open now",
+      detail: `Closes ${fmt12(today.close)}`,
+      todayIndex: dayIdx,
+    };
+  }
+  if (nowMins < openMins) {
+    return {
+      isOpen: false,
+      label: "Closed",
+      detail: `Opens ${fmt12(today.open)}`,
+      todayIndex: dayIdx,
+    };
+  }
+  // After close — find next open day
+  for (let i = 1; i <= 7; i++) {
+    const next = shopHours.weeklySchedule[(dayIdx + i) % 7];
+    if (next) {
+      return {
+        isOpen: false,
+        label: "Closed",
+        detail: `Opens ${fmt12(next.open)}${i === 1 ? " tomorrow" : ""}`,
+        todayIndex: dayIdx,
+      };
+    }
+  }
+  return {
+    isOpen: false,
+    label: "Closed",
+    detail: "",
+    todayIndex: dayIdx,
+  };
+}
 
 export function isOpenOn(date: Date): boolean {
   return shopHours.weeklySchedule[date.getDay()] !== null;
