@@ -8,8 +8,8 @@ export const business = {
   founded: "Founded in Danbury, CT",
   rating: { score: 4.9, count: 81, source: "Google" },
   contact: {
-    phone: "+12035155987",
-    phoneDisplay: "(203) 515-5987",
+    phone: "+12037609223",
+    phoneDisplay: "(203) 760-9223",
     email: "support@movingmobiles.com",
     address: {
       street: "13 Danbury Rd",

@@ -61,8 +61,8 @@ export default function StepBrand() {
 
       <p className="mt-6 text-[14px] text-[var(--ink-muted-48)]">
         Have questions?{" "}
-        <a href="tel:+12035155987" className="text-[var(--primary)] hover:underline">
-          Call us at (203) 515-5987
+        <a href="tel:+12037609223" className="text-[var(--primary)] hover:underline">
+          Call us at (203) 760-9223
         </a>
         .
       </p>

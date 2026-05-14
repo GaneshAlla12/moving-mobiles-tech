@@ -40,6 +40,8 @@ const PUBLIC_NAV = [
 
 const STAFF_NAV_EXTRA = [
   { href: "/staff/appointments", label: "Appointments", desc: "Live from Cal.com" },
+  { href: "/staff/leads", label: "Customer requests", desc: "Leads from Maria the AI" },
+  { href: "/staff/catalog", label: "Catalog audit", desc: "What Maria can see in Shopify" },
   { href: "/staff/attendance", label: "Time clock", desc: "Sign in / sign out tracking" },
   { href: "/staff/schedule", label: "Schedule", desc: "Weekly staff shifts" },
   { href: "/staff/shop", label: "Shop CMS", desc: "Carousel order + featured" },

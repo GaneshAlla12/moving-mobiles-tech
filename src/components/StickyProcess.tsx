@@ -57,8 +57,8 @@ export default function StickyProcess() {
       style={{ height: `${steps.length * 100}vh` }}
     >
       <div className="sticky top-0 h-screen flex items-center">
-        <div className="mx-auto w-full max-w-6xl px-4 sm:px-6">
-          <div className="grid items-center gap-12 lg:grid-cols-2">
+        <div className="mx-auto w-full max-w-7xl px-5 sm:px-8">
+          <div className="grid items-center gap-16 lg:grid-cols-2">
             <div>
               <div className="text-[12px] uppercase tracking-[0.18em] text-[var(--primary)]">
                 How it works
@@ -106,7 +106,7 @@ export default function StickyProcess() {
             </div>
 
             {/* Right column: visual */}
-            <div className="relative aspect-square w-full max-w-md mx-auto rounded-[24px] border border-[var(--hairline)] bg-[var(--surface)] overflow-hidden">
+            <div className="relative aspect-square w-full max-w-[560px] mx-auto rounded-[24px] border border-[var(--hairline)] bg-[var(--surface)] overflow-hidden">
               {steps.map((s, i) => (
                 <div
                   key={s.n}

@@ -59,6 +59,10 @@ export const config = {
     "/staff/appointments/:path*",
     "/staff/attendance",
     "/staff/attendance/:path*",
+    "/staff/leads",
+    "/staff/leads/:path*",
+    "/staff/catalog",
+    "/staff/catalog/:path*",
     "/staff/identify",
   ],
 };

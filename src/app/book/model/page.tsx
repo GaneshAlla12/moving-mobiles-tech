@@ -81,7 +81,7 @@ export default function StepModel() {
       <p className="mt-6 text-[14px] text-[var(--ink-muted-48)]">
         Don&apos;t see your exact model?{" "}
         <a
-          href="tel:+12035155987"
+          href="tel:+12037609223"
           className="text-[var(--primary)] hover:underline"
         >
           Give us a call

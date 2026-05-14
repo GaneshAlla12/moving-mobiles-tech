@@ -150,12 +150,14 @@
   --primary-on-dark: #2997ff;
   --primary-soft: rgba(41, 151, 255, 0.12);
 
-  --tile-light: #0a0a0a;
-  --tile-canvas: #0a0a0a;
-  --tile-sunken: #050507;
-  --tile-dark-1: #0a0a0a;
-  --tile-dark-2: #111113;
-  --tile-dark-3: #18181b;
+  /* Tiered dark surfaces — gives the page visible section rhythm in dark mode.
+     Going from "lighter" (used as hero/elevated bg) to "deeper" (used as dramatic CTA bg). */
+  --tile-light: #18181b;       /* hero & trust strip — slightly elevated */
+  --tile-canvas: #121215;      /* parchment / "visit the shop" — mid */
+  --tile-sunken: #050507;      /* deepest — dramatic backdrop */
+  --tile-dark-1: #0a0a0c;      /* "Repair restored" / final CTA — deep black */
+  --tile-dark-2: #16161a;
+  --tile-dark-3: #1f1f23;
 
   --glass-bg: rgba(10, 10, 10, 0.72);
   --glass-bg-strong: rgba(10, 10, 10, 0.85);

@@ -116,9 +116,14 @@ export default function Footer() {
           <span>
             © {new Date().getFullYear()} {business.name}. All rights reserved.
           </span>
-          <span>
+          <a
+            href={business.contact.googleMapsUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hover:text-[var(--ink)] transition-colors"
+          >
             ★ {business.rating.score} · {business.rating.count} Google reviews
-          </span>
+          </a>
         </div>
       </div>
     </footer>

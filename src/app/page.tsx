@@ -6,6 +6,7 @@ import Reveal from "@/components/Reveal";
 import AnimatedCounter from "@/components/AnimatedCounter";
 import StickyProcess from "@/components/StickyProcess";
 import PromoCarousel from "@/components/PromoCarousel";
+import MapCard from "@/components/MapCard";
 import { services } from "@/lib/services";
 import { business } from "@/lib/business";
 
@@ -198,50 +199,56 @@ export default function Home() {
 
       {/* Visit the shop */}
       <section className="tile-canvas border-t border-[var(--hairline)]">
-        <div className="mx-auto max-w-3xl px-5 sm:px-8 section-pad text-center">
-          <Reveal>
-            <div className="eyebrow">Visit the shop</div>
-            <h2 className="mt-4 h-display-lg">
-              {business.contact.address.city},{" "}
-              {business.contact.address.state}.
-            </h2>
-            <p className="mt-6 max-w-lg mx-auto text-[17px] text-[var(--ink-muted-60)] leading-[1.55]">
-              We&apos;re a short drive from Norwalk, Stamford, Ridgefield, and
-              Danbury. Walk-ins welcome — but booking guarantees a tech is ready
-              for you.
-            </p>
-            <address className="mt-8 not-italic text-[16px] text-[var(--ink)] leading-[1.6]">
-              {business.contact.address.street},{" "}
-              {business.contact.address.city}, {business.contact.address.state}{" "}
-              {business.contact.address.zip}
-              <br />
-              <span className="text-[var(--ink-muted-48)]">
-                {business.contact.hoursDisplay}
-              </span>
-            </address>
-            <div className="mt-9 flex flex-wrap justify-center gap-3">
-              <a
-                href={`tel:${business.contact.phone}`}
-                className="btn-primary px-6 py-3 text-[15px]"
-              >
-                Call {business.contact.phoneDisplay}
-              </a>
-              <a
-                href={business.contact.googleMapsUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="btn-secondary px-6 py-3 text-[15px]"
-              >
-                Get directions
-              </a>
-            </div>
-          </Reveal>
+        <div className="mx-auto max-w-7xl px-5 sm:px-8 section-pad">
+          <div className="grid items-center gap-12 lg:grid-cols-2">
+            <Reveal>
+              <div>
+                <div className="eyebrow">Visit the shop</div>
+                <h2 className="mt-4 h-display-lg">
+                  {business.contact.address.city},{" "}
+                  {business.contact.address.state}.
+                </h2>
+                <p className="mt-6 max-w-lg text-[17px] text-[var(--ink-muted-60)] leading-[1.55]">
+                  We&apos;re a short drive from Norwalk, Stamford, Ridgefield,
+                  and Danbury. Walk-ins welcome — but booking guarantees a tech
+                  is ready for you.
+                </p>
+                <address className="mt-8 not-italic text-[16px] text-[var(--ink)] leading-[1.6]">
+                  {business.contact.address.street},{" "}
+                  {business.contact.address.city},{" "}
+                  {business.contact.address.state}{" "}
+                  {business.contact.address.zip}
+                  <br />
+                  <span className="text-[var(--ink-muted-48)]">
+                    {business.contact.hoursDisplay}
+                  </span>
+                </address>
+                <div className="mt-9 flex flex-wrap gap-3">
+                  <a
+                    href={`tel:${business.contact.phone}`}
+                    className="btn-primary px-6 py-3 text-[15px]"
+                  >
+                    Call {business.contact.phoneDisplay}
+                  </a>
+                  <Link
+                    href="/contact"
+                    className="btn-secondary px-6 py-3 text-[15px]"
+                  >
+                    More details
+                  </Link>
+                </div>
+              </div>
+            </Reveal>
+            <Reveal delay={120}>
+              <MapCard />
+            </Reveal>
+          </div>
         </div>
       </section>
 
       {/* Final CTA — full-bleed, dramatic */}
       <section className="tile-dark">
-        <div className="mx-auto max-w-4xl px-5 sm:px-8 section-pad text-center">
+        <div className="mx-auto max-w-5xl px-5 sm:px-8 section-pad text-center">
           <Reveal>
             <div className="eyebrow text-white/55">Get started</div>
             <h2 className="mt-4 h-display-xl text-white">

@@ -199,7 +199,7 @@ export default function ProductDetail({
               </button>
             ) : noPrice ? (
               <a
-                href="tel:+12035155987"
+                href="tel:+12037609223"
                 className="btn-primary w-full md:w-auto px-8 py-3 text-[17px]"
               >
                 Call for pricing
