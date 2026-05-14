@@ -410,6 +410,89 @@ The whole conversion tracking system is ~100 lines of code spread across 3 files
 
 ---
 
+## Project economics
+
+This is the section that usually doesn't make it into engineering case studies, but it matters for two audiences: business owners thinking about whether AI-assisted development is real, and engineers thinking about their own market value.
+
+### What this build would cost on the open market
+
+A multi-product application of this scope (premium customer site + AI voice agent + e-commerce integration + real-time staff portal + analytics tracking) priced by traditional firms:
+
+| Provider tier | Typical quote (USD) | What you'd get |
+|---|---|---|
+| **High-end US agency** | $80,000 – $150,000+ | Discovery → spec → design → build → QA → launch over 4–6 months. Multiple specialists (PM, design lead, frontend, backend, AI engineer). Quarterly retainer for maintenance. |
+| **Mid-market US agency** | $40,000 – $80,000 | Smaller team, faster turnaround. 3–4 months. |
+| **Senior US freelancer** | $25,000 – $50,000 | One experienced engineer. 2–3 months. |
+| **Specialized AI voice agent consultancies** (Bland, Retell, Cresta integrators) | $15,000 – $30,000 *for the voice agent piece alone* | Production-grade voice agent setup, prompt engineering, tool integration. Does NOT include website, staff portal, e-commerce. |
+| **India / SE Asia agencies** | $15,000 – $35,000 | Typically lower rates, longer timelines (4–6 months). |
+| **Offshore freelancers (Upwork etc.)** | $5,000 – $15,000 | Variable quality. Higher rework risk. Usually 3–4 months including iterations. |
+
+**This project was built in three weeks by one developer using Claude Code.** The implication isn't that traditional shops are overpriced — they bundle in QA, account management, post-launch support, and risk. The implication is that the *technical floor* for what one person can ship has moved up by an order of magnitude.
+
+### Operational cost floor — what it costs to keep this running every month
+
+The infrastructure cost to keep this exact stack running in production:
+
+#### Minimum survivable budget (if you absolutely must cut costs)
+
+| Service | Plan | Monthly cost |
+|---|---|---|
+| Vercel | Hobby (free) | **$0** |
+| Upstash Redis | Free tier (500K commands/month) | **$0** |
+| Cal.com | Free (single user) | **$0** |
+| Google Sheets / Cloud | Free tier service account | **$0** |
+| Google Tag / Ads | Free (only pay for ad spend separately) | **$0** |
+| Resend (email) | Free (3,000 emails/month) | **$0** |
+| Domain (movingmobiles.com) | $15/year amortized | **~$1** |
+| Shopify | Basic plan | $39 (already paid by merchant) |
+| VAPI (voice agent) | Pay-as-you-go, ~$0.07/minute | **$10–$30** (~150–450 voice minutes/month) |
+| VAPI phone number | $1.15/month | **$1** |
+| **TOTAL (excluding Shopify, which the business already pays)** | | **~$12–$32 / month** |
+
+#### Realistic production budget
+
+In practice, you want to spend slightly more for reliability and scale headroom:
+
+| Service | Plan | Monthly cost |
+|---|---|---|
+| **Vercel Pro** (recommended for production) | $20/user — gets you SLAs, more build minutes, team features | **$20** |
+| **Upstash Redis paid tier** (when free tier exceeded) | Pay-per-request | **$0–$10** |
+| **VAPI** | Same pay-as-you-go | **$30–$100** (~400–1400 minutes — covers a busy small business) |
+| **VAPI phone number** | Local US number | **$1** |
+| **OpenAI usage** | Bundled into VAPI, but if separated: GPT-4o-mini ~$0.15/1M input tokens | **~$5–15** depending on call volume |
+| **Cal.com Pro** (multi-user team) | $15/seat | **$15** (1 seat) |
+| **Resend** (when free tier exceeded) | $20/month for 50K emails | **$0–$20** |
+| **Domain** | Annual | **$1** |
+| **Shopify** | Already paid | (excluded) |
+| **TOTAL** | | **~$70–$165 / month** |
+
+#### Practical floor below which you can't go without breaking things
+
+The absolute can't-go-below number is **roughly $15/month** in core infra (just VAPI minutes + phone number), assuming:
+- You stay on Vercel Hobby
+- You stay under all free tier limits (which is realistic for a small business)
+- The merchant already pays Shopify
+
+If voice call volume grows beyond ~500 minutes/month, VAPI becomes the dominant cost. At 1,000 minutes/month (~30 calls/day averaging 3 minutes each), VAPI alone is ~$70/month — still trivial compared to one repair job's revenue.
+
+### Cost-per-conversion math
+
+The conversion tracking we set up means every customer interaction has a measurable economic value:
+
+- A typical phone-repair customer is worth **$100–$300** in revenue
+- VAPI cost per inbound call (3 min avg): **~$0.21**
+- Booking call that converts to a customer: **~$0.21 cost → $200 revenue = ~950× ROI**
+
+Even if only 1 in 50 inbound calls converts, the unit economics still favor running this at 19×+ ROI.
+
+### What this means strategically
+
+1. **The infrastructure floor for "premium customer experience tech" is now ~$70/month.** Small businesses can now afford technology that two years ago required a $100K capex.
+2. **The build cost has collapsed from $50K+ to one engineer-month.** This is the actual market disruption.
+3. **The bottleneck is no longer cost or skills — it's awareness.** Most small businesses don't know this kind of system is now within their budget. Selling them on the *idea* takes longer than building it.
+
+---
+
 ## Tech stack
 
 ### Core
