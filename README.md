@@ -104,6 +104,16 @@ Site-wide Google Tag with three conversion events wired up:
 
 All wired through Vercel env vars so conversion IDs are zero-code to update.
 
+### 7. Shopify catalog build — 150 products with AI-generated studio photography
+A foundational piece of the project most engineering case studies skip: the actual **product catalog**. The voice agent and storefront are only as valuable as the data they query. So 150 product entries were built up from scratch:
+
+- ✍️ **AI-generated product descriptions** — SEO-aware, on-brand copy for every SKU, written by Claude
+- 📸 **Studio-quality product photography via Higgsfield** — premium hero images for each product, generated with AI image models at a fraction of traditional studio photography cost
+- 🛒 **Bulk upload to Shopify** — products, variants (color, storage, capacity), pricing, inventory levels, tags for the Headless channel
+- 🏷️ **Categorization + tags** — so the voice agent can filter (`phone`, `accessory`, `repair`, `case`, etc.)
+
+This work directly powers the live voice agent (Maria searches this exact catalog) and the customer-facing storefront. Without it, the rest of the system has nothing to talk about.
+
 ---
 
 ## The AI-assisted development approach
@@ -286,6 +296,45 @@ The most technically interesting part of the project. Maria is configured in VAP
 - **After-hours handling**: different greeting, aggressive lead capture, prefixes lead with "AFTER-HOURS CALL -"
 - **Walk-in discount promotion**: mentions at most once per call, only during open hours, only for phone purchases (not repairs)
 
+### Staff portal — full module map
+
+The protected `/staff/*` area has seven distinct sub-modules, each solving a specific operational need for the store team:
+
+```mermaid
+flowchart TB
+    Login[🔐 Staff Login<br/>Email + Password]
+    Login --> Identify[👤 Identify<br/>Pick employee + PIN]
+
+    Identify --> Hub[🏠 Staff Portal]
+
+    Hub --> Leads[📋 Customer Requests<br/>━━━━━━━━━━━━━━<br/>Live leads from Maria<br/>Urgent callbacks<br/>10s auto-refresh<br/>Toast notifications]
+
+    Hub --> Catalog[🛍️ Catalog Audit<br/>━━━━━━━━━━━━━━<br/>Every Shopify product<br/>Variant availability<br/>Search + filter]
+
+    Hub --> Appts[📅 Appointments<br/>━━━━━━━━━━━━━━<br/>Cal.com bookings<br/>Day-grouped view<br/>Past + upcoming]
+
+    Hub --> Clock[⏰ Time Clock<br/>━━━━━━━━━━━━━━<br/>Punch in/out<br/>Per-employee log<br/>Daily summary]
+
+    Hub --> Schedule[📆 Schedule<br/>━━━━━━━━━━━━━━<br/>Weekly shifts<br/>Per-employee plan]
+
+    Hub --> Shop[🏪 Shop CMS<br/>━━━━━━━━━━━━━━<br/>Carousel order<br/>Featured products]
+
+    Hub --> Pricing[💰 Pricing<br/>━━━━━━━━━━━━━━<br/>Repair cost overrides<br/>Powers public estimator]
+
+    style Login fill:#fff,stroke:#000,stroke-width:2px
+    style Identify fill:#fff,stroke:#000,stroke-width:2px
+    style Hub fill:#fce7f3,stroke:#ec4899,stroke-width:3px
+    style Leads fill:#fef3c7,stroke:#f59e0b
+    style Catalog fill:#dbeafe,stroke:#3b82f6
+    style Appts fill:#d1fae5,stroke:#10b981
+    style Clock fill:#fee2e2,stroke:#ef4444
+    style Schedule fill:#e0e7ff,stroke:#6366f1
+    style Shop fill:#fef3c7,stroke:#f59e0b
+    style Pricing fill:#d1fae5,stroke:#10b981
+```
+
+Auth uses cookie-based middleware: a master `STAFF_TOKEN` cookie gates all `/staff/*` routes, and a per-employee PIN sets a `STAFF_NAME` cookie that personalizes the portal and auto-clocks the user in/out. Total auth surface: ~80 lines of TypeScript.
+
 ### Staff portal — Customer Requests (`/staff/leads`)
 
 This is the most polished UI surface in the project. Key features:
@@ -309,6 +358,52 @@ Built to solve the question "is every Shopify product visible to Maria, or are s
 - Per-variant availability with green/red dots and strikethrough for unavailable
 - Tags rendered as chips
 - Premium card layout matching the rest of the portal
+
+### Shopify catalog build — 150 SKUs, AI-generated end-to-end
+
+This is the data foundation of everything else. Without a populated catalog, the voice agent has nothing to look up and the storefront has nothing to sell. **150 products were built from scratch using AI-assisted workflows:**
+
+```mermaid
+flowchart LR
+    subgraph TRADITIONAL[" 🐢 Traditional approach (per product) "]
+        direction TB
+        A1[Hire photographer<br/>$20–100] --> A2[Photo shoot<br/>1–2 days]
+        A2 --> A3[Edit photos<br/>$10–30]
+        A3 --> A4[Write copy<br/>$10–50]
+        A4 --> A5[Upload to Shopify<br/>10 min]
+    end
+
+    subgraph AI[" ⚡ AI-assisted approach (per product) "]
+        direction TB
+        B1[Higgsfield image gen<br/>~$0.10–0.50] --> B2[Claude description gen<br/>~$0.05]
+        B2 --> B3[Bulk upload<br/>via Shopify Admin]
+    end
+
+    style TRADITIONAL fill:#fee2e2,stroke:#ef4444
+    style AI fill:#d1fae5,stroke:#10b981
+```
+
+**What was built:**
+
+| Asset | Per product | Total (150 SKUs) |
+|---|---|---|
+| 📸 **Studio-quality product image** (Higgsfield AI) | 1 hero image | ~150 images |
+| ✍️ **SEO-aware product description** (Claude) | ~75–120 words | ~16,500 words |
+| 🏷️ **Variants** (color/storage/capacity) | 2–8 variants/product | ~500 variants |
+| 💰 **Pricing + inventory** | Live in Shopify | Synced to Storefront API |
+| 🔖 **Tags** (`phone`, `accessory`, `repair`, etc.) | 2–5 tags/product | Drives voice agent filtering |
+| 📁 **Sales channel assignment** | Headless channel enabled | All 150 visible to Maria |
+
+**Why this matters technically:** A common failure mode of voice-agent demos is that they look impressive in a sandbox but fall apart when the data behind them is sparse or messy. Investing in a clean, well-tagged catalog before tuning the voice agent's search query is the difference between *"do you have iPhone 17?"* returning a confident `"yes, in deep blue and Cosmic Orange"` versus an embarrassed `"I don't see anything matching that."` Catalog quality and AI agent quality are inseparable.
+
+**Cost comparison (full catalog of 150):**
+
+| Approach | Cost | Time |
+|---|---|---|
+| **Traditional** (studio photo + copywriter + manual upload) | $5,000 – $25,000 | 4–8 weeks |
+| **This project** (Higgsfield + Claude + bulk upload) | **$30 – $100** | **~3 days** |
+
+That's a **~100–250× cost reduction** for the catalog layer alone — and the AI-generated images are visually consistent across the whole catalog in a way that hand-photographed sets rarely are.
 
 ### Backend API endpoints
 
@@ -688,6 +783,30 @@ You **cannot go below this** without losing core functionality.
 
 ---
 
+### 🛍️ One-time build costs — catalog + media
+
+The recurring monthly costs above are operational. There's also a **one-time content cost** to populate the catalog:
+
+| Asset | Tool | Per-unit cost | Total (150 products) |
+|---|---|---|---|
+| Hero product images (studio-grade) | Higgsfield image gen | ~$0.10–0.50 / image | $15 – $75 |
+| Product descriptions (SEO-aware) | Claude (via Claude Code) | ~$0.01–0.05 / desc | $1.50 – $7.50 |
+| Variant setup + tags + Shopify upload | Manual via Shopify Admin | Time only | ~6–8 hours |
+| **TOTAL one-time catalog build** | | | **~$20–$85 + 1 day of work** |
+
+Traditional approach (in-house or agency):
+
+| Asset | Traditional cost | Total (150 products) |
+|---|---|---|
+| Studio photography | $20–100 / product | $3,000 – $15,000 |
+| Copywriting | $10–50 / description | $1,500 – $7,500 |
+| Shopify product entry (paid labor) | $5–15 / product | $750 – $2,250 |
+| **TOTAL traditional catalog build** | | **$5,250 – $24,750** |
+
+**Net savings on catalog build: ~$5,000–$25,000 (≈100–250× cheaper) for visually consistent results.**
+
+---
+
 ### 💸 Cost-per-conversion math (ROI breakdown)
 
 Why this stack pays for itself many times over:
@@ -745,7 +864,8 @@ EVEN AT 1-IN-50 CONVERSION RATE:
 ### AI / Voice
 - **[VAPI](https://vapi.ai)** — voice agent platform
 - **[OpenAI GPT-4o-mini](https://openai.com)** — Maria's underlying LLM
-- **[Anthropic Claude](https://anthropic.com)** — used for development (via Claude Code)
+- **[Anthropic Claude](https://anthropic.com)** — used for development (via Claude Code) + product description generation
+- **[Higgsfield AI](https://higgsfield.ai)** — studio-grade product image generation for the 150-SKU catalog
 
 ### Data layer
 - **[Shopify Storefront API](https://shopify.dev/docs/api/storefront)** (GraphQL, public token, Headless channel)
