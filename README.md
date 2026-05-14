@@ -151,34 +151,79 @@ In 2026, the bottleneck on small-to-medium production software is no longer engi
 
 ## System architecture
 
+```mermaid
+flowchart TB
+    Customer([📱 Customer]) -->|Phone call| VAPI
+    Customer -->|Web visit| Site
+
+    subgraph Site[" "]
+      direction TB
+      WebSite[🌐 movingmobiles.com<br/>Vercel · Next.js 16]
+    end
+
+    VAPI[🎙️ VAPI<br/>Maria · GPT-4o-mini]
+    WebSite --> API[⚡ /api endpoints]
+    VAPI -->|Tool calls| API
+
+    API --> Shopify[🛍️ Shopify<br/>Storefront API]
+    API --> Sheets[📊 Google Sheets<br/>Lead persistence]
+    API --> Calcom[📅 Cal.com<br/>Bookings]
+    API <--> Redis[(⚡ Upstash Redis<br/>5-min cache)]
+
+    Shopify -.->|cached| Redis
+
+    Staff([👥 Staff]) -->|Login| StaffPortal
+    StaffPortal[🔒 /staff/* Portal<br/>Real-time dashboard]
+    StaffPortal --> API
+    API --> Webhook[📨 /api/vapi/events<br/>missed-call detection]
+    VAPI -.->|end-of-call-report| Webhook
+
+    style VAPI fill:#fef3c7,stroke:#f59e0b
+    style WebSite fill:#dbeafe,stroke:#3b82f6
+    style StaffPortal fill:#fce7f3,stroke:#ec4899
+    style API fill:#d1fae5,stroke:#10b981
+    style Customer fill:#fff,stroke:#000,stroke-width:2px
+    style Staff fill:#fff,stroke:#000,stroke-width:2px
 ```
-                         ┌──────────────────────────┐
-                         │  movingmobiles.com       │
-                         │  (Vercel · Next.js 16)   │
-                         └──────────────────────────┘
-                                    │
-        ┌───────────────────────────┼───────────────────────────┐
-        │                           │                           │
-   Customer-facing            Staff portal               API endpoints
-   pages (SSR/SSG)            (cookie-auth gated)        (Vercel Functions)
-        │                           │                           │
-        │                           │           ┌───────────────┼───────────────┐
-        │                           │           │               │               │
-        │                           │      /api/vapi/*   /api/staff/*    /api/book, /api/*
-        │                           │           │               │               │
-        │                           │           ▼               ▼               ▼
-        │                    ┌──────────┐  ┌────────┐    ┌──────────┐    ┌──────────┐
-        │                    │ Auth/PIN │  │  VAPI  │    │  Google  │    │  Cal.com │
-        │                    │Middleware│  │ Maria  │    │  Sheets  │    │   API    │
-        │                    └──────────┘  └────────┘    └──────────┘    └──────────┘
-        │                                       │                              │
-        │                                       │                              │
-        ▼                                       ▼                              ▼
-   ┌──────────┐                          ┌──────────┐                   ┌──────────┐
-   │ Shopify  │ ◄────── caches ─────────│ Upstash  │                   │ Cal.com  │
-   │Storefront│                          │  Redis   │                   │ Events   │
-   │   API    │                          └──────────┘                   └──────────┘
-   └──────────┘
+
+### How a typical call flows through the system
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant 📱 Customer
+    participant 🎙️ Maria
+    participant ⚡ API
+    participant 🛍️ Shopify
+    participant 📊 Sheets
+    participant 📅 Cal.com
+    participant 👥 Staff
+
+    📱 Customer->>🎙️ Maria: "Do you have iPhone 17 in stock?"
+    🎙️ Maria->>⚡ API: lookup_products(searchTerm: "iPhone 17")
+    ⚡ API->>🛍️ Shopify: GraphQL search query
+    🛍️ Shopify-->>⚡ API: Products + availability
+    ⚡ API-->>🎙️ Maria: Voice-friendly summary
+    🎙️ Maria-->>📱 Customer: "Yes — iPhone 17 Pro available..."
+
+    📱 Customer->>🎙️ Maria: "Can I book an appointment Friday?"
+    🎙️ Maria->>⚡ API: check_availability(date: "2026-05-22")
+    ⚡ API->>📅 Cal.com: GET slots
+    📅 Cal.com-->>⚡ API: Open slots
+    ⚡ API-->>🎙️ Maria: "9 AM, 11 AM, 2 PM available"
+    🎙️ Maria-->>📱 Customer: Reads slots back
+
+    📱 Customer->>🎙️ Maria: "2 PM works, my email is..."
+    🎙️ Maria->>🎙️ Maria: Double-confirm name, phone, email
+    🎙️ Maria->>⚡ API: book_appointment(...)
+    ⚡ API->>📅 Cal.com: Create booking
+    ⚡ API->>📊 Sheets: Append "BOOKED -" lead row
+    📅 Cal.com-->>⚡ API: Booking confirmed
+    ⚡ API-->>🎙️ Maria: "Lead saved + booking created"
+    🎙️ Maria-->>📱 Customer: "Booked Friday 2 PM. Email on the way."
+
+    Note over 📊 Sheets,👥 Staff: 10s auto-refresh
+    📊 Sheets-->>👥 Staff: New BOOKED card appears<br/>on /staff/leads dashboard
 ```
 
 ### Key design decisions
@@ -396,100 +441,296 @@ The whole conversion tracking system is ~100 lines of code spread across 3 files
 
 ## Performance metrics
 
-| Metric | Before | After |
-|---|---|---|
-| **Voice agent tool-call latency** | 4–7 seconds | 0.5–1.5 seconds |
-| **Cached product lookups** | N/A | ~50 ms |
-| **LLM API calls per voice agent turn** | 2 (Maria + n8n agent) | 1 (Maria only) |
-| **Staff dashboard refresh delay** | Manual reload | Auto every 10s |
-| **Lead duplicates per call** | 2–3 rows per customer | 1 grouped thread per customer |
-| **Missed-callback detection delay** | N/A (silent failure) | ~10s after call ends |
-| **Booking flow steps** | Hardcoded forms | Stateful 6-step wizard with sessionStorage |
-| **Build cold-start time** | 12–15s | 8–10s |
-| **Lighthouse score (homepage)** | N/A | 95+ across all metrics |
+### Voice agent response latency — before vs after
+
+```
+BEFORE (n8n middleware path):
+████████████████████████████████████████████████████████████████  4–7 seconds  😴
+
+AFTER (direct API + Redis cache):
+████████  0.5–1.5 seconds  ⚡
+
+CACHED LOOKUPS:
+█  ~50 ms  🚀
+
+                                            5–10× FASTER
+```
+
+```mermaid
+xychart-beta
+    title "Voice agent response time (seconds)"
+    x-axis ["Before refactor", "After refactor", "Cached lookups"]
+    y-axis "Seconds" 0 --> 7
+    bar [5.5, 1.0, 0.05]
+```
+
+### Full metrics comparison
+
+| Metric | Before | After | Improvement |
+|---|---|---|---|
+| **🎙️ Voice agent tool-call latency** | 4–7 s | 0.5–1.5 s | **5–10×** |
+| **⚡ Cached product lookups** | N/A | ~50 ms | New capability |
+| **🧠 LLM API calls per voice turn** | 2 | 1 | **50% fewer** |
+| **🔄 Staff dashboard refresh** | Manual reload | Auto every 10 s | Real-time |
+| **📋 Lead duplicates per call** | 2–3 rows | 1 grouped thread | **De-duplicated** |
+| **🚨 Missed-callback detection** | Silent failure | ~10 s after call | New capability |
+| **📅 Booking flow** | Hardcoded forms | 6-step wizard w/ persistence | UX upgrade |
+| **🛠️ Build cold-start time** | 12–15 s | 8–10 s | **~33% faster** |
+| **🏆 Lighthouse score (homepage)** | N/A | 95+ across all | Premium |
 
 ---
 
 ## Project economics
 
-This is the section that usually doesn't make it into engineering case studies, but it matters for two audiences: business owners thinking about whether AI-assisted development is real, and engineers thinking about their own market value.
+> **Two audiences for this section:**
+> - 💼 **Business owners** evaluating whether AI-assisted dev is real
+> - 👨‍💻 **Engineers** benchmarking their own market value
 
-### What this build would cost on the open market
+---
 
-A multi-product application of this scope (premium customer site + AI voice agent + e-commerce integration + real-time staff portal + analytics tracking) priced by traditional firms:
+### 💰 Market rate — what equivalent builds cost
 
-| Provider tier | Typical quote (USD) | What you'd get |
+```mermaid
+xychart-beta
+    title "Cost to build equivalent system (USD, lower bound)"
+    x-axis ["High-end US agency", "Mid-market agency", "Senior freelancer", "AI consultancy (voice only)", "Offshore"]
+    y-axis "USD" 0 --> 160000
+    bar [80000, 40000, 25000, 15000, 5000]
+```
+
+| Tier | Quote (USD) | Time | What you get |
+|---|---|---|---|
+| 🏢 **High-end US agency** | $80K – $150K+ | 4–6 months | Full team, design system, QA, retainer |
+| 🏬 **Mid-market US agency** | $40K – $80K | 3–4 months | Smaller team, faster turnaround |
+| 👨‍💻 **Senior US freelancer** | $25K – $50K | 2–3 months | One experienced engineer |
+| 🎙️ **AI voice consultancy** | $15K – $30K | 1–2 months | *Voice agent only* — no site/portal |
+| 🌏 **India / SE Asia agency** | $15K – $35K | 4–6 months | Lower rates, longer timelines |
+| 🌐 **Offshore freelancer** | $5K – $15K | 3–4 months | Higher variability |
+
+**This was built in three weeks by one developer using Claude Code.** The implication isn't that traditional shops are overpriced — they bundle in QA, account management, support, and risk. The implication is that **the technical floor for what one person can ship has moved up an order of magnitude.**
+
+---
+
+### 🧩 Feature-by-feature operational cost
+
+Here's exactly what each feature costs to run, per month:
+
+```
+┌──────────────────────────────────────────────────────────────────┐
+│  🌐 WEBSITE HOSTING (Vercel)                                       │
+│  ─────────────────────────────────────────────────────────────── │
+│  What it does:  Hosts the whole site + serverless API endpoints   │
+│  Free tier:     ✅  100 GB bandwidth, 100K function invocations   │
+│  Paid tier:     $20/mo Pro plan (SLAs, more builds, team)         │
+│  Typical use:   Free tier covers small business                   │
+│  → COST: 💵 $0 (free)  or  💵 $20/mo (Pro)                        │
+└──────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────────┐
+│  🎙️ AI VOICE AGENT (VAPI)                                          │
+│  ─────────────────────────────────────────────────────────────── │
+│  What it does:  Receives customer calls, runs Maria the AI agent  │
+│  Pricing model: Pay-per-minute, ~$0.07/voice-minute               │
+│  Example math:  100 calls × 3 min avg = 300 min × $0.07 = $21     │
+│                 500 calls × 3 min = 1,500 min × $0.07 = $105      │
+│  → COST: 💵 $10–$100/mo (scales with call volume)                 │
+└──────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────────┐
+│  📞 VOICE AGENT PHONE NUMBER (VAPI)                               │
+│  ─────────────────────────────────────────────────────────────── │
+│  What it does:  Dedicated US phone number customers can call      │
+│  Pricing:       Flat $1.15/month per number                       │
+│  → COST: 💵 $1/mo                                                 │
+└──────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────────┐
+│  🛍️ SHOPIFY STOREFRONT (live inventory + checkout)                │
+│  ─────────────────────────────────────────────────────────────── │
+│  What it does:  Source of truth for products, prices, stock       │
+│  Pricing:       Basic Shopify $39/mo (paid by the merchant)       │
+│  Headless API:  ✅ Free addon (the Storefront API we use)         │
+│  → COST: 💵 $0 (merchant already pays Shopify separately)         │
+└──────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────────┐
+│  📅 APPOINTMENT BOOKING (Cal.com)                                  │
+│  ─────────────────────────────────────────────────────────────── │
+│  What it does:  Real-time slot availability + booking creation    │
+│  Free tier:     ✅  1 user, unlimited bookings                    │
+│  Paid tier:     $15/mo per seat (Pro — multi-user team)           │
+│  → COST: 💵 $0 (1 user)  or  💵 $15/mo (per extra staff)          │
+└──────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────────┐
+│  📊 LEAD STORAGE (Google Sheets)                                   │
+│  ─────────────────────────────────────────────────────────────── │
+│  What it does:  Stores every customer lead Maria captures         │
+│  Pricing:       ✅ Free with any Google account                   │
+│                 If business Gmail: Workspace $6/user/mo           │
+│  → COST: 💵 $0 (free)                                             │
+└──────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────────┐
+│  ⚡ CACHE LAYER (Upstash Redis)                                    │
+│  ─────────────────────────────────────────────────────────────── │
+│  What it does:  Caches Shopify lookups for 5 min → 50ms response  │
+│  Free tier:     ✅ 500K commands/month, 256 MB storage             │
+│  Paid tier:     Pay-per-request beyond free tier                  │
+│  Typical use:   Free tier covers small businesses easily          │
+│  → COST: 💵 $0 (free tier sufficient for normal traffic)          │
+└──────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────────┐
+│  📈 GOOGLE ADS TRACKING (Conversions)                             │
+│  ─────────────────────────────────────────────────────────────── │
+│  What it does:  Tracks booking, phone, email conversions          │
+│  Pricing:       ✅ Free (Google Ads tag + conversions)            │
+│  Ad spend:      Separate (your decision — typically $5–10/day)    │
+│  → COST: 💵 $0 (only pay for ad spend you choose)                 │
+└──────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────────┐
+│  ✉️ TRANSACTIONAL EMAIL (Resend)                                   │
+│  ─────────────────────────────────────────────────────────────── │
+│  What it does:  Booking confirmations, appointment reminders      │
+│  Free tier:     ✅ 3,000 emails/month                              │
+│  Paid tier:     $20/mo for 50K emails                             │
+│  → COST: 💵 $0 (free tier covers small businesses)                │
+└──────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────────┐
+│  🌐 DOMAIN NAME (movingmobiles.com)                               │
+│  ─────────────────────────────────────────────────────────────── │
+│  What it does:  Your custom domain                                │
+│  Pricing:       ~$15/year amortized                               │
+│  → COST: 💵 ~$1/mo                                                │
+└──────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+### 📊 Total monthly cost — three scenarios
+
+```mermaid
+xychart-beta
+    title "Monthly operational cost (USD)"
+    x-axis ["Bare minimum", "Realistic small biz", "Busy small biz"]
+    y-axis "USD" 0 --> 200
+    bar [15, 70, 165]
+```
+
+#### Scenario 1 — Bare minimum (just keep the lights on) — **~$12–32/mo**
+
+| Service | Plan | Cost |
 |---|---|---|
-| **High-end US agency** | $80,000 – $150,000+ | Discovery → spec → design → build → QA → launch over 4–6 months. Multiple specialists (PM, design lead, frontend, backend, AI engineer). Quarterly retainer for maintenance. |
-| **Mid-market US agency** | $40,000 – $80,000 | Smaller team, faster turnaround. 3–4 months. |
-| **Senior US freelancer** | $25,000 – $50,000 | One experienced engineer. 2–3 months. |
-| **Specialized AI voice agent consultancies** (Bland, Retell, Cresta integrators) | $15,000 – $30,000 *for the voice agent piece alone* | Production-grade voice agent setup, prompt engineering, tool integration. Does NOT include website, staff portal, e-commerce. |
-| **India / SE Asia agencies** | $15,000 – $35,000 | Typically lower rates, longer timelines (4–6 months). |
-| **Offshore freelancers (Upwork etc.)** | $5,000 – $15,000 | Variable quality. Higher rework risk. Usually 3–4 months including iterations. |
+| Vercel | Free | $0 |
+| Upstash Redis | Free | $0 |
+| Cal.com | Free | $0 |
+| Google Sheets | Free | $0 |
+| Resend | Free | $0 |
+| Domain | Annual | $1 |
+| VAPI phone | Flat | $1 |
+| VAPI minutes | ~150 min/mo | $10–30 |
+| **TOTAL** | | **💵 $12–32/mo** |
 
-**This project was built in three weeks by one developer using Claude Code.** The implication isn't that traditional shops are overpriced — they bundle in QA, account management, post-launch support, and risk. The implication is that the *technical floor* for what one person can ship has moved up by an order of magnitude.
+#### Scenario 2 — Realistic small business — **~$70–110/mo**
 
-### Operational cost floor — what it costs to keep this running every month
-
-The infrastructure cost to keep this exact stack running in production:
-
-#### Minimum survivable budget (if you absolutely must cut costs)
-
-| Service | Plan | Monthly cost |
+| Service | Plan | Cost |
 |---|---|---|
-| Vercel | Hobby (free) | **$0** |
-| Upstash Redis | Free tier (500K commands/month) | **$0** |
-| Cal.com | Free (single user) | **$0** |
-| Google Sheets / Cloud | Free tier service account | **$0** |
-| Google Tag / Ads | Free (only pay for ad spend separately) | **$0** |
-| Resend (email) | Free (3,000 emails/month) | **$0** |
-| Domain (movingmobiles.com) | $15/year amortized | **~$1** |
-| Shopify | Basic plan | $39 (already paid by merchant) |
-| VAPI (voice agent) | Pay-as-you-go, ~$0.07/minute | **$10–$30** (~150–450 voice minutes/month) |
-| VAPI phone number | $1.15/month | **$1** |
-| **TOTAL (excluding Shopify, which the business already pays)** | | **~$12–$32 / month** |
+| Vercel **Pro** | SLA + features | $20 |
+| Upstash Redis | Free tier still | $0 |
+| Cal.com **Pro** | 1 staff seat | $15 |
+| Resend | Still free tier | $0 |
+| Domain | Annual | $1 |
+| VAPI phone | Flat | $1 |
+| VAPI minutes | ~400 min/mo | $30–70 |
+| **TOTAL** | | **💵 $70–110/mo** |
 
-#### Realistic production budget
+#### Scenario 3 — Busy small business — **~$130–180/mo**
 
-In practice, you want to spend slightly more for reliability and scale headroom:
-
-| Service | Plan | Monthly cost |
+| Service | Plan | Cost |
 |---|---|---|
-| **Vercel Pro** (recommended for production) | $20/user — gets you SLAs, more build minutes, team features | **$20** |
-| **Upstash Redis paid tier** (when free tier exceeded) | Pay-per-request | **$0–$10** |
-| **VAPI** | Same pay-as-you-go | **$30–$100** (~400–1400 minutes — covers a busy small business) |
-| **VAPI phone number** | Local US number | **$1** |
-| **OpenAI usage** | Bundled into VAPI, but if separated: GPT-4o-mini ~$0.15/1M input tokens | **~$5–15** depending on call volume |
-| **Cal.com Pro** (multi-user team) | $15/seat | **$15** (1 seat) |
-| **Resend** (when free tier exceeded) | $20/month for 50K emails | **$0–$20** |
-| **Domain** | Annual | **$1** |
-| **Shopify** | Already paid | (excluded) |
-| **TOTAL** | | **~$70–$165 / month** |
+| Vercel Pro | Same | $20 |
+| Upstash Redis | Tier 1 paid | $10 |
+| Cal.com Pro | 2 staff seats | $30 |
+| Resend | Paid tier | $20 |
+| Domain | Annual | $1 |
+| VAPI phone | Flat | $1 |
+| VAPI minutes | ~1,000 min/mo | $70–100 |
+| **TOTAL** | | **💵 $130–180/mo** |
 
-#### Practical floor below which you can't go without breaking things
+---
 
-The absolute can't-go-below number is **roughly $15/month** in core infra (just VAPI minutes + phone number), assuming:
-- You stay on Vercel Hobby
-- You stay under all free tier limits (which is realistic for a small business)
-- The merchant already pays Shopify
+### 🎯 The "can't go below" floor
 
-If voice call volume grows beyond ~500 minutes/month, VAPI becomes the dominant cost. At 1,000 minutes/month (~30 calls/day averaging 3 minutes each), VAPI alone is ~$70/month — still trivial compared to one repair job's revenue.
+The absolute hard floor — what breaks if you cut more:
 
-### Cost-per-conversion math
+| Service | Why you can't cut it |
+|---|---|
+| **VAPI minutes** | Without these, the voice agent can't take calls. Even 1 customer/day = ~$1/month minimum. |
+| **VAPI phone number** | $1/month — you literally have no number to call without it. |
+| **Domain** | $1/month — without this, the URL doesn't work. |
 
-The conversion tracking we set up means every customer interaction has a measurable economic value:
+**The hard floor: ~$15/month**, assuming free tiers for everything else and minimal call volume.
 
-- A typical phone-repair customer is worth **$100–$300** in revenue
-- VAPI cost per inbound call (3 min avg): **~$0.21**
-- Booking call that converts to a customer: **~$0.21 cost → $200 revenue = ~950× ROI**
+```
+COST FLOOR BREAKDOWN
+====================
+VAPI phone number:    $1.00  ████
+VAPI ~150 minutes:    $10.00 ████████████████████████████████████████
+Domain (amortized):   $1.00  ████
+                     ──────
+                     $12.00  /month minimum to keep system alive
+```
 
-Even if only 1 in 50 inbound calls converts, the unit economics still favor running this at 19×+ ROI.
+You **cannot go below this** without losing core functionality.
 
-### What this means strategically
+---
 
-1. **The infrastructure floor for "premium customer experience tech" is now ~$70/month.** Small businesses can now afford technology that two years ago required a $100K capex.
-2. **The build cost has collapsed from $50K+ to one engineer-month.** This is the actual market disruption.
-3. **The bottleneck is no longer cost or skills — it's awareness.** Most small businesses don't know this kind of system is now within their budget. Selling them on the *idea* takes longer than building it.
+### 💸 Cost-per-conversion math (ROI breakdown)
+
+Why this stack pays for itself many times over:
+
+```
+TYPICAL PHONE REPAIR CUSTOMER:  $100–$300 in revenue per repair
+
+COST TO HANDLE THEIR CALL:
+  • 3-minute VAPI call          = $0.21
+  • Server/cache/sheets time    = ~$0.00 (free tier)
+                                  ──────
+  Total cost per inbound call:    $0.21
+
+CONVERSION SCENARIO:
+  • Call cost: $0.21
+  • If they book a repair: +$200 revenue
+  • Net: $199.79 per converted call
+  • ROI: ~950×
+
+EVEN AT 1-IN-50 CONVERSION RATE:
+  50 calls × $0.21 = $10.50 cost
+  1 booking = $200 revenue
+  Net ROI: 19×
+```
+
+---
+
+### 🚀 Strategic takeaways
+
+```
+┌──────────────────────────────────────────────────────────────────┐
+│                                                                    │
+│  1️⃣  PREMIUM CUSTOMER TECH IS NOW $15-$180/MO                       │
+│      Small businesses can afford what cost $100K capex in 2024.    │
+│                                                                    │
+│  2️⃣  BUILD COST HAS COLLAPSED FROM $50K+ TO ONE ENGINEER-MONTH      │
+│      This is the actual market disruption — AI-assisted dev.       │
+│                                                                    │
+│  3️⃣  BOTTLENECK IS NO LONGER COST OR SKILLS — IT'S AWARENESS        │
+│      Most small businesses don't know this exists at this price.    │
+│                                                                    │
+└──────────────────────────────────────────────────────────────────┘
+```
 
 ---
 
